@@ -6,10 +6,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ykatchou.ylauncher.data.db.FavoriteDao
 import com.ykatchou.ylauncher.data.db.FolderDao
+import com.ykatchou.ylauncher.data.db.PanelDao
 import com.ykatchou.ylauncher.data.model.AppInfo
 import com.ykatchou.ylauncher.data.model.FavoriteApp
 import com.ykatchou.ylauncher.data.model.Folder
 import com.ykatchou.ylauncher.data.model.FolderApp
+import com.ykatchou.ylauncher.data.model.Panel
 import com.ykatchou.ylauncher.data.repository.AppRepository
 import com.ykatchou.ylauncher.data.repository.PrefsRepository
 import com.ykatchou.ylauncher.util.UsageStatsHelper
@@ -27,6 +29,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
@@ -38,6 +41,7 @@ class HomeViewModel @Inject constructor(
     private val appRepository: AppRepository,
     private val favoriteDao: FavoriteDao,
     private val folderDao: FolderDao,
+    private val panelDao: PanelDao,
     private val prefsRepository: PrefsRepository,
     val widgetHost: LauncherWidgetHost,
 ) : ViewModel() {
@@ -65,9 +69,9 @@ class HomeViewModel @Inject constructor(
 
     // Panel state
     val activePanel = prefsRepository.activePanel
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
-    val panelNames = prefsRepository.panelNames
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), listOf("Perso", "Pro"))
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
+    val panels: StateFlow<List<Panel>> = panelDao.getAllPanels()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // Favorites filtered by active panel
     val favorites: StateFlow<List<FavoriteApp>> = combine(
@@ -114,18 +118,18 @@ class HomeViewModel @Inject constructor(
         prefsRepository.homePrefs
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), com.ykatchou.ylauncher.data.repository.HomePrefs())
 
-    // Per-panel HAL button actions (derived from homePrefs + activePanel)
-    val halTapAction: StateFlow<String> = combine(homePrefs, activePanel) { prefs, panel ->
-        prefs.halTapActionRaw.split(";;").getOrElse(panel) { "ASSISTANT" }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "ASSISTANT")
+    // Magic-button (HAL) actions are global, shared across all panels.
+    val halTapAction: StateFlow<String> = homePrefs
+        .map { it.halTapActionRaw }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "ASSISTANT")
 
-    val halLongPressAction: StateFlow<String> = combine(homePrefs, activePanel) { prefs, panel ->
-        prefs.halLongPressActionRaw.split(";;").getOrElse(panel) { "SETTINGS" }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "SETTINGS")
+    val halLongPressAction: StateFlow<String> = homePrefs
+        .map { it.halLongPressActionRaw }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "SETTINGS")
 
-    val halDoubleTapAction: StateFlow<String> = combine(homePrefs, activePanel) { prefs, panel ->
-        prefs.halDoubleTapActionRaw.split(";;").getOrElse(panel) { "APP_DRAWER" }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "APP_DRAWER")
+    val halDoubleTapAction: StateFlow<String> = homePrefs
+        .map { it.halDoubleTapActionRaw }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "APP_DRAWER")
 
     private val dbWriteMutex = Mutex()
 
@@ -133,6 +137,7 @@ class HomeViewModel @Inject constructor(
     val isDrawerOpen: StateFlow<Boolean> = _isDrawerOpen.asStateFlow()
 
     init {
+        reconcileLegacyPanelNamesIfNeeded()
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 withTimeout(10_000) { appRepository.refreshApps() }
@@ -269,16 +274,68 @@ class HomeViewModel @Inject constructor(
 
     // Panel operations
 
-    fun switchPanel(panelId: Int) {
+    fun switchPanel(panelId: Long) {
         viewModelScope.launch { prefsRepository.setActivePanel(panelId) }
     }
 
-    fun moveFavoriteToPanel(favorite: FavoriteApp, targetPanelId: Int) {
+    fun moveFavoriteToPanel(favorite: FavoriteApp, targetPanelId: Long) {
         viewModelScope.launch {
             val targetFavs = favoriteDao.getAllFavoritesOnce().filter { it.panelId == targetPanelId }
             val nextPosition = (targetFavs.maxOfOrNull { it.position } ?: -1) + 1
             favoriteDao.deleteFavoriteAt(favorite.position)
             favoriteDao.insertFavorite(favorite.copy(position = nextPosition, panelId = targetPanelId))
+        }
+    }
+
+    fun addPanel(name: String) {
+        viewModelScope.launch {
+            val nextPosition = (panels.value.maxOfOrNull { it.position } ?: -1) + 1
+            val newId = panelDao.insertPanel(Panel(name = name, position = nextPosition))
+            prefsRepository.setActivePanel(newId)
+        }
+    }
+
+    fun renamePanel(id: Long, newName: String) {
+        viewModelScope.launch { panelDao.renamePanel(id, newName) }
+    }
+
+    fun reorderPanels(newOrder: List<Panel>) {
+        viewModelScope.launch {
+            newOrder.forEachIndexed { index, panel ->
+                if (panel.position != index) panelDao.updatePanel(panel.copy(position = index))
+            }
+        }
+    }
+
+    fun deletePanel(id: Long) {
+        viewModelScope.launch {
+            val remaining = panels.value.filterNot { it.id == id }
+            if (remaining.isEmpty()) return@launch
+            panelDao.deletePanel(id) // FK cascade removes this panel's favorite_apps rows — installed apps untouched
+            if (activePanel.value == id) {
+                prefsRepository.setActivePanel(remaining.first().id)
+            }
+        }
+    }
+
+    /**
+     * One-time reconciliation: after MIGRATION_3_4 seeds `panels` with placeholder names
+     * (Room migrations can't read DataStore), copy the user's real legacy panel names
+     * (if any) from DataStore onto the matching Panel rows by id. Safe to call on every
+     * launch — no-ops once `markLegacyPanelNamesMigrated()` has run.
+     */
+    fun reconcileLegacyPanelNamesIfNeeded() {
+        viewModelScope.launch {
+            if (prefsRepository.legacyPanelNamesMigrated()) return@launch
+            val legacyNames = prefsRepository.legacyPanelNamesCsvOnce()
+                ?.split("|")?.filter { it.isNotBlank() }
+            if (legacyNames != null) {
+                val existingIds = panelDao.getAllPanelsOnce().map { it.id }.toSet()
+                legacyNames.forEachIndexed { index, name ->
+                    if (index.toLong() in existingIds) panelDao.renamePanel(index.toLong(), name)
+                }
+            }
+            prefsRepository.markLegacyPanelNamesMigrated()
         }
     }
 

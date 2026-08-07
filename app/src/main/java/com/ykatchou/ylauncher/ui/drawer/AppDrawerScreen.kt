@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -47,6 +48,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
@@ -85,6 +88,7 @@ fun AppDrawerScreen(
     // Countdown state — null when not counting down
     var pendingLaunchApp by remember { mutableStateOf<com.ykatchou.ylauncher.data.model.AppInfo?>(null) }
     var countdownProgress by remember { mutableFloatStateOf(0f) }
+    var countdownCancelled by remember { mutableStateOf(false) }
 
     BackHandler { onDismiss() }
 
@@ -106,18 +110,22 @@ fun AppDrawerScreen(
             } else {
                 pendingLaunchApp = app
                 countdownProgress = 0f
+                countdownCancelled = false
                 val startMs = System.currentTimeMillis()
                 val totalMs = (delaySec * 1000).toLong()
                 while (true) {
+                    if (countdownCancelled) break
                     val elapsed = System.currentTimeMillis() - startMs
                     countdownProgress = (elapsed.toFloat() / totalMs).coerceIn(0f, 1f)
                     if (elapsed >= totalMs) break
                     delay(16L)
                 }
                 pendingLaunchApp = null
-                if (onAppSelected != null) onAppSelected(app)
-                else AppLauncher.launch(context, app.packageName, app.activityClassName, app.userHandle)
-                onDismiss()
+                if (!countdownCancelled) {
+                    if (onAppSelected != null) onAppSelected(app)
+                    else AppLauncher.launch(context, app.packageName, app.activityClassName, app.userHandle)
+                    onDismiss()
+                }
             }
         } else {
             pendingLaunchApp = null
@@ -134,7 +142,16 @@ fun AppDrawerScreen(
     }
 
     Surface(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    if (pendingLaunchApp != null) {
+                        countdownCancelled = true
+                    }
+                }
+            },
         color = MaterialTheme.colorScheme.background.copy(alpha = 0.92f),
     ) {
         Column(

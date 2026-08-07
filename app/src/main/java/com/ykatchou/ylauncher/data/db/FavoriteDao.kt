@@ -32,7 +32,7 @@ interface FavoriteDao {
     suspend fun deleteAll()
 
     @Query("DELETE FROM favorite_apps WHERE panelId = :panelId")
-    suspend fun deleteByPanel(panelId: Int)
+    suspend fun deleteByPanel(panelId: Long)
 
     @Query("SELECT COUNT(*) FROM favorite_apps")
     suspend fun count(): Int

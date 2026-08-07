@@ -18,12 +18,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.ykatchou.ylauncher.data.model.Panel
 
 @Composable
 fun PanelPickerDialog(
-    panelNames: List<String>,
-    currentPanelId: Int,
-    onPanelSelected: (Int) -> Unit,
+    panels: List<Panel>,
+    currentPanelId: Long,
+    onPanelSelected: (Long) -> Unit,
     onDismiss: () -> Unit,
 ) {
     Dialog(onDismissRequest = onDismiss) {
@@ -43,17 +44,17 @@ fun PanelPickerDialog(
                 HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
                 Spacer(modifier = Modifier.height(8.dp))
 
-                panelNames.forEachIndexed { index, name ->
-                    if (index != currentPanelId) {
+                panels.forEach { panel ->
+                    if (panel.id != currentPanelId) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onPanelSelected(index) }
+                                .clickable { onPanelSelected(panel.id) }
                                 .padding(vertical = 14.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                text = name,
+                                text = panel.name,
                                 style = MaterialTheme.typography.bodyLarge,
                             )
                         }

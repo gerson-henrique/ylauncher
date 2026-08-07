@@ -51,7 +51,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.Alignment
@@ -122,7 +122,7 @@ fun HomeScreen(
     val halDoubleTapAction by viewModel.halDoubleTapAction.collectAsState()
     val notifications by NotificationService.notifications.collectAsState()
     val activePanel by viewModel.activePanel.collectAsState()
-    val panelNames by viewModel.panelNames.collectAsState()
+    val panels by viewModel.panels.collectAsState()
     val homeWidgetIds by viewModel.homeWidgetIds.collectAsState()
     val appList by appRepository.appList.collectAsState()
     // Unpack frequently-used prefs as local vals for readability
@@ -350,7 +350,7 @@ fun HomeScreen(
                                             onClick = { openFolderId = favorite.folderId },
                                             onEditFavorites = { showEditFavorites = true },
                                             onEditFolder = { editingFolderId = favorite.folderId },
-                                            onMoveToPanel = if (panelNames.size > 1) {
+                                            onMoveToPanel = if (panels.size > 1) {
                                                 { movingFavoriteToPanel = favorite }
                                             } else null,
                                         )
@@ -376,7 +376,7 @@ fun HomeScreen(
                                             onMoveToFolder = if (allFolders.isNotEmpty()) {
                                                 { movingFavorite = favorite }
                                             } else null,
-                                            onMoveToPanel = if (panelNames.size > 1) {
+                                            onMoveToPanel = if (panels.size > 1) {
                                                 { movingFavoriteToPanel = favorite }
                                             } else null,
                                             onAppInfo = { context.openAppInfo(favorite.packageName) },
@@ -477,10 +477,10 @@ fun HomeScreen(
                         modifier = Modifier.weight(1f),
                         horizontalArrangement = Arrangement.Start,
                     ) {
-                        panelNames.forEachIndexed { index, name ->
-                            val isActive = index == activePanel
+                        panels.forEachIndexed { index, panel ->
+                            val isActive = panel.id == activePanel
                             Text(
-                                text = if (isActive) "● $name" else "○ $name",
+                                text = if (isActive) "● ${panel.name}" else "○ ${panel.name}",
                                 style = MaterialTheme.typography.labelMedium.copy(
                                     shadow = WallpaperTextShadow,
                                 ),
@@ -490,7 +490,11 @@ fun HomeScreen(
                                         interactionSource = null,
                                         indication = null,
                                     ) {
-                                        val target = if (index == activePanel) (activePanel + 1) % panelNames.size else index
+                                        val target = if (isActive) {
+                                            panels[(index + 1) % panels.size].id
+                                        } else {
+                                            panel.id
+                                        }
                                         viewModel.switchPanel(target)
                                     }
                                     .padding(end = 10.dp, top = 4.dp, bottom = 4.dp),
@@ -759,7 +763,7 @@ fun HomeScreen(
         // Panel picker for "Move to panel"
         if (movingFavoriteToPanel != null) {
             PanelPickerDialog(
-                panelNames = panelNames,
+                panels = panels,
                 currentPanelId = activePanel,
                 onPanelSelected = { targetPanel ->
                     viewModel.moveFavoriteToPanel(movingFavoriteToPanel!!, targetPanel)

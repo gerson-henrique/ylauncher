@@ -5,13 +5,15 @@ import androidx.room.RoomDatabase
 import com.ykatchou.ylauncher.data.model.FavoriteApp
 import com.ykatchou.ylauncher.data.model.Folder
 import com.ykatchou.ylauncher.data.model.FolderApp
+import com.ykatchou.ylauncher.data.model.Panel
 
 @Database(
-    entities = [FavoriteApp::class, Folder::class, FolderApp::class],
-    version = 3,
+    entities = [FavoriteApp::class, Folder::class, FolderApp::class, Panel::class],
+    version = 4,
     exportSchema = false,
 )
 abstract class YLauncherDatabase : RoomDatabase() {
     abstract fun favoriteDao(): FavoriteDao
     abstract fun folderDao(): FolderDao
+    abstract fun panelDao(): PanelDao
 }

@@ -40,11 +40,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ykatchou.ylauncher.billing.BillingManager
+import com.ykatchou.ylauncher.data.db.PanelDao
 import com.ykatchou.ylauncher.data.model.AppInfo
+import com.ykatchou.ylauncher.data.model.Panel
 import com.ykatchou.ylauncher.data.repository.AppRepository
 import com.ykatchou.ylauncher.data.repository.PrefsRepository
 import com.ykatchou.ylauncher.ui.components.CoffeeFab
 import com.ykatchou.ylauncher.ui.hal.HalAction
+import com.ykatchou.ylauncher.ui.home.EditPanelsDialog
 import com.ykatchou.ylauncher.util.AppIconCache
 import com.ykatchou.ylauncher.util.openDefaultLauncherSettings
 import kotlinx.coroutines.launch
@@ -55,6 +58,7 @@ fun SettingsScreen(
     prefsRepository: PrefsRepository,
     appRepository: AppRepository,
     billingManager: BillingManager,
+    panelDao: PanelDao,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -71,25 +75,24 @@ fun SettingsScreen(
     val textSizeScale by prefsRepository.textSizeScale.collectAsState(initial = 1f)
     val suggestionCount by prefsRepository.suggestionCount.collectAsState(initial = 3)
     val recentAppsCount by prefsRepository.recentAppsCount.collectAsState(initial = 0)
-    val panelNames by prefsRepository.panelNames.collectAsState(initial = listOf("Perso", "Pro"))
+    val panels by panelDao.getAllPanels().collectAsState(initial = emptyList())
     val autoLaunchDelay by prefsRepository.autoLaunchDelay.collectAsState(initial = 0f)
     val showNotifBubble by prefsRepository.showNotifBubble.collectAsState(initial = true)
     val showNotifPreview by prefsRepository.showNotifPreview.collectAsState(initial = true)
     val showNotifBadge by prefsRepository.showNotifBadge.collectAsState(initial = true)
     val showDonation by prefsRepository.showDonation.collectAsState(initial = true)
     val billingState by billingManager.billingState.collectAsState()
-    val activePanel by prefsRepository.activePanel.collectAsState(initial = 0)
-    val halTapRaw by prefsRepository.halTapAction.collectAsState(initial = "ASSISTANT;;ASSISTANT")
-    val halLongPressRaw by prefsRepository.halLongPressAction.collectAsState(initial = "SETTINGS;;SETTINGS")
-    val halDoubleTapRaw by prefsRepository.halDoubleTapAction.collectAsState(initial = "APP_DRAWER;;APP_DRAWER")
-    var configPanelIndex by remember { mutableStateOf(0) }
+    val activePanel by prefsRepository.activePanel.collectAsState(initial = 0L)
+    val halTap by prefsRepository.halTapAction.collectAsState(initial = "ASSISTANT")
+    val halLongPress by prefsRepository.halLongPressAction.collectAsState(initial = "SETTINGS")
+    val halDoubleTap by prefsRepository.halDoubleTapAction.collectAsState(initial = "APP_DRAWER")
+    var showManagePanels by remember { mutableStateOf(false) }
 
     // Local state for sliders to avoid excessive DataStore writes during drag
     var sliderValue by remember(textSizeScale) { mutableFloatStateOf(textSizeScale) }
     var suggestionSlider by remember(suggestionCount) { mutableFloatStateOf(suggestionCount.toFloat()) }
     var recentSlider by remember(recentAppsCount) { mutableFloatStateOf(recentAppsCount.toFloat()) }
     var autoLaunchDelaySlider by remember(autoLaunchDelay) { mutableFloatStateOf(autoLaunchDelay) }
-    var panelNamesText by remember(panelNames) { mutableStateOf(panelNames.joinToString(", ")) }
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -231,35 +234,18 @@ fun SettingsScreen(
 
             Column(modifier = Modifier.padding(vertical = 8.dp)) {
                 Text(
-                    text = "Panel names",
+                    text = panels.joinToString(", ") { it.name }.ifBlank { "No panels yet" },
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
-                Text(
-                    text = "Comma-separated list (e.g. Perso, Pro)",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = panelNamesText,
-                    onValueChange = { panelNamesText = it },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Save",
+                    text = "Manage panels",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier
-                        .clickable {
-                            val names = panelNamesText.split(",").map { it.trim() }.filter { it.isNotBlank() }
-                            if (names.isNotEmpty()) {
-                                scope.launch { prefsRepository.setPanelNames(names) }
-                            }
-                        }
+                        .clickable { showManagePanels = true }
                         .padding(vertical = 8.dp),
                 )
             }
@@ -292,49 +278,22 @@ fun SettingsScreen(
             SectionHeader("Magic button")
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Panel selector for button config
-            Row(
-                modifier = Modifier.padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "Configure for: ",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                panelNames.forEachIndexed { index, name ->
-                    Text(
-                        text = if (index == configPanelIndex) "● $name" else "○ $name",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (index == configPanelIndex) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-                        fontWeight = if (index == configPanelIndex) FontWeight.Bold else FontWeight.Normal,
-                        modifier = Modifier
-                            .clickable { configPanelIndex = index }
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                    )
-                }
-            }
-
-            val currentTap = halTapRaw.split(";;").getOrElse(configPanelIndex) { "ASSISTANT" }
-            val currentLongPress = halLongPressRaw.split(";;").getOrElse(configPanelIndex) { "SETTINGS" }
-            val currentDoubleTap = halDoubleTapRaw.split(";;").getOrElse(configPanelIndex) { "APP_DRAWER" }
-
             ActionPicker(
                 label = "Tap",
-                currentAction = currentTap,
-                onActionSelected = { scope.launch { prefsRepository.setHalTapAction(configPanelIndex, it) } },
+                currentAction = halTap,
+                onActionSelected = { scope.launch { prefsRepository.setHalTapAction(it) } },
                 appRepository = appRepository,
             )
             ActionPicker(
                 label = "Long press",
-                currentAction = currentLongPress,
-                onActionSelected = { scope.launch { prefsRepository.setHalLongPressAction(configPanelIndex, it) } },
+                currentAction = halLongPress,
+                onActionSelected = { scope.launch { prefsRepository.setHalLongPressAction(it) } },
                 appRepository = appRepository,
             )
             ActionPicker(
                 label = "Double tap",
-                currentAction = currentDoubleTap,
-                onActionSelected = { scope.launch { prefsRepository.setHalDoubleTapAction(configPanelIndex, it) } },
+                currentAction = halDoubleTap,
+                onActionSelected = { scope.launch { prefsRepository.setHalDoubleTapAction(it) } },
                 appRepository = appRepository,
             )
 
@@ -441,6 +400,37 @@ fun SettingsScreen(
                     .padding(vertical = 8.dp),
             )
         }
+    }
+
+    if (showManagePanels) {
+        EditPanelsDialog(
+            panels = panels,
+            onRename = { id, name -> scope.launch { panelDao.renamePanel(id, name) } },
+            onReorder = { newOrder ->
+                scope.launch {
+                    newOrder.forEachIndexed { index, panel ->
+                        if (panel.position != index) panelDao.updatePanel(panel.copy(position = index))
+                    }
+                }
+            },
+            onAdd = { name ->
+                scope.launch {
+                    val nextPosition = (panels.maxOfOrNull { it.position } ?: -1) + 1
+                    panelDao.insertPanel(Panel(name = name, position = nextPosition))
+                }
+            },
+            onDelete = { id ->
+                scope.launch {
+                    val remaining = panels.filterNot { it.id == id }
+                    if (remaining.isEmpty()) return@launch
+                    panelDao.deletePanel(id)
+                    if (activePanel == id) {
+                        prefsRepository.setActivePanel(remaining.first().id)
+                    }
+                }
+            },
+            onDismiss = { showManagePanels = false },
+        )
     }
 }
 

@@ -36,9 +36,9 @@ data class HomePrefs(
     val swipeLeftActivity: String = "",
     val swipeRightActivity: String = "",
     val halAssistantPackage: String = "com.google.android.apps.googleassistant",
-    val halTapActionRaw: String = "ASSISTANT;;ASSISTANT",
-    val halLongPressActionRaw: String = "SETTINGS;;SETTINGS",
-    val halDoubleTapActionRaw: String = "APP_DRAWER;;APP_DRAWER",
+    val halTapActionRaw: String = "ASSISTANT",
+    val halLongPressActionRaw: String = "SETTINGS",
+    val halDoubleTapActionRaw: String = "APP_DRAWER",
 )
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "ylauncher_prefs")
@@ -71,7 +71,8 @@ class PrefsRepository @Inject constructor(
         val SUGGESTION_COUNT = intPreferencesKey("suggestion_count")
         val RECENT_APPS_COUNT = intPreferencesKey("recent_apps_count")
         val ACTIVE_PANEL = intPreferencesKey("active_panel")
-        val PANEL_NAMES = stringPreferencesKey("panel_names")
+        val PANEL_NAMES_LEGACY = stringPreferencesKey("panel_names")
+        val PANEL_NAMES_MIGRATED = booleanPreferencesKey("panel_names_migrated")
         val HAL_TAP_ACTION = stringPreferencesKey("hal_tap_action")
         val HAL_LONG_PRESS_ACTION = stringPreferencesKey("hal_long_press_action")
         val HAL_DOUBLE_TAP_ACTION = stringPreferencesKey("hal_double_tap_action")
@@ -109,10 +110,7 @@ class PrefsRepository @Inject constructor(
 
     val suggestionCount: Flow<Int> = dataStore.data.map { it[SUGGESTION_COUNT] ?: 3 }
     val recentAppsCount: Flow<Int> = dataStore.data.map { it[RECENT_APPS_COUNT] ?: 0 }
-    val activePanel: Flow<Int> = dataStore.data.map { it[ACTIVE_PANEL] ?: 0 }
-    val panelNames: Flow<List<String>> = dataStore.data.map { prefs ->
-        prefs[PANEL_NAMES]?.split("|")?.filter { it.isNotBlank() } ?: listOf("Perso", "Pro")
-    }.distinctUntilChanged()
+    val activePanel: Flow<Long> = dataStore.data.map { (it[ACTIVE_PANEL] ?: 0).toLong() }
 
     /** Single snapshot of all home-screen prefs — subscribe once instead of 13×. */
     val homePrefs: Flow<HomePrefs> = dataStore.data.map { p ->
@@ -130,9 +128,9 @@ class PrefsRepository @Inject constructor(
             swipeLeftActivity = p[SWIPE_LEFT_ACTIVITY] ?: "",
             swipeRightActivity = p[SWIPE_RIGHT_ACTIVITY] ?: "",
             halAssistantPackage = p[HAL_ASSISTANT_PACKAGE] ?: "com.google.android.apps.googleassistant",
-            halTapActionRaw = p[HAL_TAP_ACTION] ?: "ASSISTANT;;ASSISTANT",
-            halLongPressActionRaw = p[HAL_LONG_PRESS_ACTION] ?: "SETTINGS;;SETTINGS",
-            halDoubleTapActionRaw = p[HAL_DOUBLE_TAP_ACTION] ?: "APP_DRAWER;;APP_DRAWER",
+            halTapActionRaw = (p[HAL_TAP_ACTION] ?: "ASSISTANT").split(";;").first(),
+            halLongPressActionRaw = (p[HAL_LONG_PRESS_ACTION] ?: "SETTINGS").split(";;").first(),
+            halDoubleTapActionRaw = (p[HAL_DOUBLE_TAP_ACTION] ?: "APP_DRAWER").split(";;").first(),
         )
     }.distinctUntilChanged()
 
@@ -149,13 +147,12 @@ class PrefsRepository @Inject constructor(
     val showDonation: Flow<Boolean> = dataStore.data.map { it[SHOW_DONATION] ?: true }
     val firstLaunchTimestamp: Flow<Long> = dataStore.data.map { it[FIRST_LAUNCH_TIMESTAMP] ?: 0L }
 
-    val halTapAction: Flow<String> = dataStore.data.map { it[HAL_TAP_ACTION] ?: "ASSISTANT;;ASSISTANT" }
-    val halLongPressAction: Flow<String> = dataStore.data.map { it[HAL_LONG_PRESS_ACTION] ?: "SETTINGS;;SETTINGS" }
-    val halDoubleTapAction: Flow<String> = dataStore.data.map { it[HAL_DOUBLE_TAP_ACTION] ?: "APP_DRAWER;;APP_DRAWER" }
-
-    fun halTapActionForPanel(panelId: Int): Flow<String> = halTapAction.map { it.split(";;").getOrElse(panelId) { "ASSISTANT" } }
-    fun halLongPressActionForPanel(panelId: Int): Flow<String> = halLongPressAction.map { it.split(";;").getOrElse(panelId) { "SETTINGS" } }
-    fun halDoubleTapActionForPanel(panelId: Int): Flow<String> = halDoubleTapAction.map { it.split(";;").getOrElse(panelId) { "APP_DRAWER" } }
+    // Global Magic-button config, shared across all panels. Legacy values may still be
+    // ";;"-joined per-panel segments from before panels/HAL config were decoupled — take
+    // the first segment (the old panel 0's value) as the single global value going forward.
+    val halTapAction: Flow<String> = dataStore.data.map { (it[HAL_TAP_ACTION] ?: "ASSISTANT").split(";;").first() }
+    val halLongPressAction: Flow<String> = dataStore.data.map { (it[HAL_LONG_PRESS_ACTION] ?: "SETTINGS").split(";;").first() }
+    val halDoubleTapAction: Flow<String> = dataStore.data.map { (it[HAL_DOUBLE_TAP_ACTION] ?: "APP_DRAWER").split(";;").first() }
 
     suspend fun setFirstLaunchDone() {
         dataStore.edit {
@@ -222,30 +219,25 @@ class PrefsRepository @Inject constructor(
         dataStore.edit { it[RECENT_APPS_COUNT] = count }
     }
 
-    suspend fun setActivePanel(panelId: Int) {
-        dataStore.edit { it[ACTIVE_PANEL] = panelId }
+    suspend fun setActivePanel(panelId: Long) {
+        dataStore.edit { it[ACTIVE_PANEL] = panelId.toInt() }
     }
 
-    suspend fun setPanelNames(names: List<String>) {
-        dataStore.edit { it[PANEL_NAMES] = names.map { name -> name.replace("|", "") }.joinToString("|") }
+    /** Reads the legacy comma/pipe-joined panel names once, for the one-time Room reconcile pass. Null if never set. */
+    suspend fun legacyPanelNamesCsvOnce(): String? = dataStore.data.map { it[PANEL_NAMES_LEGACY] }.first()
+
+    suspend fun legacyPanelNamesMigrated(): Boolean = dataStore.data.map { it[PANEL_NAMES_MIGRATED] ?: false }.first()
+
+    suspend fun markLegacyPanelNamesMigrated() {
+        dataStore.edit { it[PANEL_NAMES_MIGRATED] = true }
     }
 
-    suspend fun setHalTapAction(panelId: Int, action: String) {
-        dataStore.edit { prefs ->
-            val parts = (prefs[HAL_TAP_ACTION] ?: "ASSISTANT;;ASSISTANT").split(";;").toMutableList()
-            while (parts.size <= panelId) parts.add("ASSISTANT")
-            parts[panelId] = action
-            prefs[HAL_TAP_ACTION] = parts.joinToString(";;")
-        }
+    suspend fun setHalTapAction(action: String) {
+        dataStore.edit { it[HAL_TAP_ACTION] = action }
     }
 
-    suspend fun setHalLongPressAction(panelId: Int, action: String) {
-        dataStore.edit { prefs ->
-            val parts = (prefs[HAL_LONG_PRESS_ACTION] ?: "SETTINGS;;SETTINGS").split(";;").toMutableList()
-            while (parts.size <= panelId) parts.add("SETTINGS")
-            parts[panelId] = action
-            prefs[HAL_LONG_PRESS_ACTION] = parts.joinToString(";;")
-        }
+    suspend fun setHalLongPressAction(action: String) {
+        dataStore.edit { it[HAL_LONG_PRESS_ACTION] = action }
     }
 
     suspend fun setAutoLaunchDelay(tenths: Int) {
@@ -296,12 +288,7 @@ class PrefsRepository @Inject constructor(
         }
     }
 
-    suspend fun setHalDoubleTapAction(panelId: Int, action: String) {
-        dataStore.edit { prefs ->
-            val parts = (prefs[HAL_DOUBLE_TAP_ACTION] ?: "APP_DRAWER;;APP_DRAWER").split(";;").toMutableList()
-            while (parts.size <= panelId) parts.add("APP_DRAWER")
-            parts[panelId] = action
-            prefs[HAL_DOUBLE_TAP_ACTION] = parts.joinToString(";;")
-        }
+    suspend fun setHalDoubleTapAction(action: String) {
+        dataStore.edit { it[HAL_DOUBLE_TAP_ACTION] = action }
     }
 }
