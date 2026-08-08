@@ -88,9 +88,9 @@ class BillingManager @Inject constructor(
             .setProductList(productList)
             .build()
 
-        billingClient?.queryProductDetailsAsync(params) { billingResult, productDetailsList ->
+        billingClient?.queryProductDetailsAsync(params) { billingResult, productDetailsResult ->
             if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
-                tipProductDetails = productDetailsList.firstOrNull()
+                tipProductDetails = productDetailsResult.productDetailsList.firstOrNull()
                 if (tipProductDetails != null) {
                     Log.d(TAG, "Product found: ${tipProductDetails?.name}")
                     _billingState.value = BillingState.READY
