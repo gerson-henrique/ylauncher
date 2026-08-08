@@ -46,6 +46,7 @@ import com.ykatchou.ylauncher.data.model.Panel
 import com.ykatchou.ylauncher.data.repository.AppRepository
 import com.ykatchou.ylauncher.data.repository.PrefsRepository
 import com.ykatchou.ylauncher.ui.components.CoffeeFab
+import com.ykatchou.ylauncher.ui.components.RateFab
 import com.ykatchou.ylauncher.ui.hal.HalAction
 import com.ykatchou.ylauncher.ui.home.EditPanelsDialog
 import com.ykatchou.ylauncher.util.AppIconCache
@@ -354,18 +355,17 @@ fun SettingsScreen(
                 onCheckedChange = { scope.launch { prefsRepository.setShowDonation(it) } },
             )
 
-            if (showDonation) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    horizontalArrangement = Arrangement.Center,
-                ) {
-                    CoffeeFab(
-                        billingManager = billingManager,
-                        billingState = billingState,
-                    )
-                }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+            ) {
+                CoffeeFab(
+                    billingManager = billingManager,
+                    billingState = billingState,
+                )
+                RateFab()
             }
 
             Spacer(modifier = Modifier.height(16.dp))

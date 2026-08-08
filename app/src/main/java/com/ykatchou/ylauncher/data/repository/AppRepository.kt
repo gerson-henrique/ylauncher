@@ -9,13 +9,18 @@ import android.os.HandlerThread
 import android.os.Process
 import android.os.UserHandle
 import android.os.UserManager
+import com.ykatchou.ylauncher.data.db.FavoriteDao
+import com.ykatchou.ylauncher.data.db.FolderDao
 import com.ykatchou.ylauncher.data.model.AppInfo
 import com.ykatchou.ylauncher.util.AppIconCache
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.Normalizer
 import javax.inject.Inject
@@ -24,13 +29,23 @@ import javax.inject.Singleton
 @Singleton
 class AppRepository @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val favoriteDao: FavoriteDao,
+    private val folderDao: FolderDao,
 ) {
     private val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
     private val userManager = context.getSystemService(Context.USER_SERVICE) as UserManager
     private val packageManager = context.packageManager
+    private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val callbackThread = HandlerThread("AppRepositoryCallbacks").also { it.start() }
     private val callbackHandler = Handler(callbackThread.looper)
+
+    private fun removeFromFavorites(packageName: String) {
+        repositoryScope.launch {
+            favoriteDao.deleteByPackage(packageName)
+            folderDao.deleteByPackage(packageName)
+        }
+    }
 
     private val _appList = MutableStateFlow<List<AppInfo>>(emptyList())
     val appList: StateFlow<List<AppInfo>> = _appList.asStateFlow()
@@ -42,6 +57,7 @@ class AppRepository @Inject constructor(
             _appList.value = _appList.value.filter {
                 it.packageName != packageName || it.userHandle != user
             }
+            removeFromFavorites(packageName)
         }
 
         override fun onPackageAdded(packageName: String?, user: UserHandle?) {

@@ -34,6 +34,9 @@ interface FavoriteDao {
     @Query("DELETE FROM favorite_apps WHERE panelId = :panelId")
     suspend fun deleteByPanel(panelId: Long)
 
+    @Query("DELETE FROM favorite_apps WHERE packageName = :packageName")
+    suspend fun deleteByPackage(packageName: String)
+
     @Query("SELECT COUNT(*) FROM favorite_apps")
     suspend fun count(): Int
 }
