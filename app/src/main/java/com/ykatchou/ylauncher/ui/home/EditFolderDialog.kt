@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -27,6 +28,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -48,6 +51,7 @@ fun EditFolderDialog(
     var name by remember { mutableStateOf(initialName) }
     var emoji by remember { mutableStateOf(initialEmoji) }
     val editApps = remember(folderApps) { folderApps.toMutableStateList() }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -135,7 +139,10 @@ fun EditFolderDialog(
                                     style = MaterialTheme.typography.bodyLarge,
                                     modifier = Modifier.weight(1f),
                                 )
-                                IconButton(onClick = { editApps.remove(folderApp) }) {
+                                IconButton(
+                                    onClick = { editApps.remove(folderApp) },
+                                    modifier = Modifier.semantics { contentDescription = "Remove ${folderApp.displayName} from folder" },
+                                ) {
                                     Text("✕", color = MaterialTheme.colorScheme.error)
                                 }
                             }
@@ -160,7 +167,7 @@ fun EditFolderDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    TextButton(onClick = onDelete) {
+                    TextButton(onClick = { showDeleteConfirm = true }) {
                         Text("Delete", color = MaterialTheme.colorScheme.error)
                     }
                     Row {
@@ -180,5 +187,22 @@ fun EditFolderDialog(
                 }
             }
         }
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete '${name.ifBlank { initialName }}'?") },
+            text = { Text("The apps inside won't be uninstalled, just removed from this folder.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirm = false
+                    onDelete()
+                }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+            },
+        )
     }
 }

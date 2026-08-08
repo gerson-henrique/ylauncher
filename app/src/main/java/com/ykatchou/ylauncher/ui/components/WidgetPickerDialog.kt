@@ -100,16 +100,25 @@ fun WidgetPickerDialog(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
-                LazyColumn(
-                    modifier = Modifier
-                        .weight(1f, fill = false)
-                        .heightIn(max = 400.dp),
-                ) {
-                    items(filtered, key = { it.provider.flattenToString() }) { info ->
-                        WidgetPickerItem(
-                            info = info,
-                            onClick = { onWidgetSelected(info.provider) },
-                        )
+                if (filtered.isEmpty()) {
+                    Text(
+                        text = if (query.isBlank()) "No widgets available" else "No results for \"$query\"",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        modifier = Modifier.padding(vertical = 16.dp),
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .heightIn(max = 400.dp),
+                    ) {
+                        items(filtered, key = { it.provider.flattenToString() }) { info ->
+                            WidgetPickerItem(
+                                info = info,
+                                onClick = { onWidgetSelected(info.provider) },
+                            )
+                        }
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))

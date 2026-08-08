@@ -14,6 +14,7 @@ import com.ykatchou.ylauncher.data.model.FolderApp
 import com.ykatchou.ylauncher.data.model.Panel
 import com.ykatchou.ylauncher.data.repository.AppRepository
 import com.ykatchou.ylauncher.data.repository.PrefsRepository
+import com.ykatchou.ylauncher.util.ONE_WEEK_MS
 import com.ykatchou.ylauncher.util.UsageStatsHelper
 import com.ykatchou.ylauncher.widget.LauncherWidgetHost
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -136,6 +137,11 @@ class HomeViewModel @Inject constructor(
     private val _isDrawerOpen = MutableStateFlow(false)
     val isDrawerOpen: StateFlow<Boolean> = _isDrawerOpen.asStateFlow()
 
+    // Null until DataStore has emitted a real value — avoids a race where the tour and the
+    // usage-stats permission prompt could both fire off a seeded default on the same frame.
+    val hasSeenOnboardingTour: StateFlow<Boolean?> = prefsRepository.hasSeenOnboardingTour
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
     init {
         reconcileLegacyPanelNamesIfNeeded()
         viewModelScope.launch(Dispatchers.IO) {
@@ -171,7 +177,7 @@ class HomeViewModel @Inject constructor(
         if (favoriteDao.count() > 0) return
 
         // Try usage stats first (imports your real most-used apps)
-        val topApps = UsageStatsHelper.getTopApps(context, appRepository, count = 6)
+        val topApps = UsageStatsHelper.getTopApps(context, appRepository, count = 10)
         if (topApps.isNotEmpty()) {
             val favorites = topApps.mapIndexed { index, app ->
                 FavoriteApp(index, app.packageName, app.activityClassName, app.appLabel, app.userHandle.toString())
@@ -181,33 +187,25 @@ class HomeViewModel @Inject constructor(
             return
         }
 
-        // Fallback: resolve default apps by intent category
+        // Fallback: a small set of sensible defaults most phones already have installed
         val defaults = mutableListOf<FavoriteApp>()
         var position = 0
 
-        // Phone
-        appRepository.resolveDefaultApp(Intent(Intent.ACTION_DIAL))?.let {
-            defaults.add(FavoriteApp(position++, it.packageName, it.activityClassName, "Phone", it.userHandle.toString()))
+        // Play Store
+        appRepository.findAppByPackage("com.android.vending")?.let {
+            defaults.add(FavoriteApp(position++, it.packageName, it.activityClassName, "Play Store", it.userHandle.toString()))
         }
-        // Messages
-        appRepository.resolveDefaultApp(Intent(Intent.ACTION_SENDTO).apply { data = android.net.Uri.parse("smsto:") })?.let {
-            defaults.add(FavoriteApp(position++, it.packageName, it.activityClassName, "Messages", it.userHandle.toString()))
-        }
-        // Browser
-        appRepository.resolveDefaultApp(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://example.com")))?.let {
-            defaults.add(FavoriteApp(position++, it.packageName, it.activityClassName, "Browser", it.userHandle.toString()))
+        // Chrome
+        appRepository.findAppByPackage("com.android.chrome")?.let {
+            defaults.add(FavoriteApp(position++, it.packageName, it.activityClassName, "Chrome", it.userHandle.toString()))
         }
         // Camera
         appRepository.resolveDefaultApp(Intent(android.provider.MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA))?.let {
             defaults.add(FavoriteApp(position++, it.packageName, it.activityClassName, "Camera", it.userHandle.toString()))
         }
-        // Gallery
-        appRepository.resolveDefaultApp(Intent(Intent.ACTION_VIEW).apply { type = "image/*" })?.let {
-            defaults.add(FavoriteApp(position++, it.packageName, it.activityClassName, "Gallery", it.userHandle.toString()))
-        }
-        // Settings
-        appRepository.resolveDefaultApp(Intent(android.provider.Settings.ACTION_SETTINGS))?.let {
-            defaults.add(FavoriteApp(position++, it.packageName, it.activityClassName, "Settings", it.userHandle.toString()))
+        // Gemini
+        appRepository.findAppByPackage("com.google.android.apps.bard")?.let {
+            defaults.add(FavoriteApp(position++, it.packageName, it.activityClassName, "Gemini", it.userHandle.toString()))
         }
 
         if (defaults.isNotEmpty()) {
@@ -216,9 +214,28 @@ class HomeViewModel @Inject constructor(
         prefsRepository.setFirstLaunchDone()
     }
 
+    /**
+     * Usage-stats permission is now requested only after the onboarding tour closes, so the
+     * initial [autoPopulateFavoritesIfNeeded] pass usually runs before permission is granted and
+     * falls back to (or finds no) default apps. Call this on resume to retry with real usage
+     * data once the user grants the permission, as long as favorites are still empty.
+     */
+    fun autoPopulateFromUsageStatsIfEmpty() {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (!UsageStatsHelper.hasPermission(context)) return@launch
+            if (favoriteDao.count() > 0) return@launch
+            val topApps = UsageStatsHelper.getTopApps(context, appRepository, count = 10)
+            if (topApps.isEmpty()) return@launch
+            val favorites = topApps.mapIndexed { index, app ->
+                FavoriteApp(index, app.packageName, app.activityClassName, app.appLabel, app.userHandle.toString())
+            }
+            favoriteDao.insertAll(favorites)
+        }
+    }
+
     fun reimportFromUsageStats() {
         viewModelScope.launch {
-            val topApps = UsageStatsHelper.getTopApps(context, appRepository, count = 6)
+            val topApps = UsageStatsHelper.getTopApps(context, appRepository, count = 10)
             if (topApps.isNotEmpty()) {
                 dbWriteMutex.withLock {
                     val panelId = activePanel.value
@@ -239,6 +256,18 @@ class HomeViewModel @Inject constructor(
 
     fun requestUsageStatsPermission() = UsageStatsHelper.requestPermission(context)
 
+    fun onOnboardingTourFinished() {
+        viewModelScope.launch { prefsRepository.setOnboardingTourSeen() }
+    }
+
+    fun onReviewRateHighConfirmed() {
+        viewModelScope.launch { prefsRepository.setReviewNeverAsk(true) }
+    }
+
+    fun onReviewSnoozed() {
+        viewModelScope.launch { prefsRepository.setReviewSnoozedUntil(System.currentTimeMillis() + ONE_WEEK_MS) }
+    }
+
     fun removeWidget(widgetId: Int) {
         widgetHost.deleteAppWidgetId(widgetId)
         viewModelScope.launch { prefsRepository.removeHomeWidgetId(widgetId) }
@@ -254,6 +283,25 @@ class HomeViewModel @Inject constructor(
 
     fun openDrawer() { _isDrawerOpen.value = true }
     fun closeDrawer() { _isDrawerOpen.value = false }
+
+    fun addFavoriteApp(app: AppInfo) {
+        viewModelScope.launch {
+            dbWriteMutex.withLock {
+                val panelId = activePanel.value
+                val nextPosition = (favoriteDao.getAllFavoritesOnce().maxOfOrNull { it.position } ?: -1) + 1
+                favoriteDao.insertFavorite(
+                    FavoriteApp(
+                        position = nextPosition,
+                        packageName = app.packageName,
+                        activityClassName = app.activityClassName,
+                        displayName = app.appLabel,
+                        userHandleString = app.userHandle.toString(),
+                        panelId = panelId,
+                    )
+                )
+            }
+        }
+    }
 
     fun saveFavorites(favorites: List<FavoriteApp>) {
         viewModelScope.launch {

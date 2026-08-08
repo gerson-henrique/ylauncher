@@ -4,6 +4,7 @@ import android.os.UserHandle
 import app.cash.turbine.test
 import com.ykatchou.ylauncher.data.db.FavoriteDao
 import com.ykatchou.ylauncher.data.db.FolderDao
+import com.ykatchou.ylauncher.data.db.PanelDao
 import com.ykatchou.ylauncher.data.model.AppInfo
 import com.ykatchou.ylauncher.data.model.FavoriteApp
 import com.ykatchou.ylauncher.data.repository.AppRepository
@@ -13,6 +14,7 @@ import com.ykatchou.ylauncher.util.MainDispatcherRule
 import com.ykatchou.ylauncher.util.UsageStatsHelper
 import com.ykatchou.ylauncher.widget.LauncherWidgetHost
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
@@ -22,6 +24,7 @@ import io.mockk.unmockkObject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -39,6 +42,7 @@ class HomeViewModelTest {
     private val allFavoritesFlow = MutableStateFlow<List<FavoriteApp>>(emptyList())
 
     private lateinit var viewModel: HomeViewModel
+    private lateinit var prefsRepository: PrefsRepository
 
     @Before
     fun setUp() {
@@ -49,13 +53,13 @@ class HomeViewModelTest {
         val appRepository = mockk<AppRepository>(relaxed = true) {
             every { appList } returns appListFlow
         }
-        val prefsRepository = mockk<PrefsRepository>(relaxed = true) {
+        prefsRepository = mockk<PrefsRepository>(relaxed = true) {
             every { activePanel } returns flowOf(0)
-            every { panelNames } returns flowOf(listOf("Perso"))
             every { suggestionCount } returns flowOf(3)
             every { recentAppsCount } returns flowOf(3)
             every { homeWidgetIds } returns flowOf(emptyList())
             every { homePrefs } returns flowOf(HomePrefs())
+            every { hasSeenOnboardingTour } returns flowOf(true)
         }
         val favoriteDao = mockk<FavoriteDao>(relaxed = true) {
             every { getAllFavorites() } returns allFavoritesFlow
@@ -64,12 +68,16 @@ class HomeViewModelTest {
         val folderDao = mockk<FolderDao>(relaxed = true) {
             every { getAllFolders() } returns flowOf(emptyList())
         }
+        val panelDao = mockk<PanelDao>(relaxed = true) {
+            every { getAllPanels() } returns flowOf(emptyList())
+        }
 
         viewModel = HomeViewModel(
             context = mockk(relaxed = true),
             appRepository = appRepository,
             favoriteDao = favoriteDao,
             folderDao = folderDao,
+            panelDao = panelDao,
             prefsRepository = prefsRepository,
             widgetHost = mockk<LauncherWidgetHost>(relaxed = true),
         )
@@ -131,5 +139,63 @@ class HomeViewModelTest {
             assertEquals(listOf(panelZero), result)
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    // --- Onboarding tour ---
+
+    @Test
+    fun `hasSeenOnboardingTour reflects the prefs flow`() = runTest {
+        viewModel.hasSeenOnboardingTour.test {
+            var item = awaitItem()
+            if (item == null) item = awaitItem() // skip the pre-DataStore-load seed value
+            assertEquals(true, item)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `hasSeenOnboardingTour starts null until DataStore emits`() {
+        val freshViewModel = HomeViewModel(
+            context = mockk(relaxed = true),
+            appRepository = mockk(relaxed = true) { every { appList } returns MutableStateFlow(emptyList()) },
+            favoriteDao = mockk(relaxed = true) {
+                every { getAllFavorites() } returns MutableStateFlow(emptyList())
+                coEvery { count() } returns 1
+            },
+            folderDao = mockk(relaxed = true) { every { getAllFolders() } returns flowOf(emptyList()) },
+            panelDao = mockk(relaxed = true) { every { getAllPanels() } returns flowOf(emptyList()) },
+            prefsRepository = mockk(relaxed = true) {
+                every { activePanel } returns flowOf(0)
+                every { homePrefs } returns flowOf(HomePrefs())
+                // hasSeenOnboardingTour intentionally never emits, to simulate the pre-DataStore-load window
+                every { hasSeenOnboardingTour } returns kotlinx.coroutines.flow.emptyFlow()
+            },
+            widgetHost = mockk(relaxed = true),
+        )
+        assertEquals(null, freshViewModel.hasSeenOnboardingTour.value)
+    }
+
+    @Test
+    fun `onOnboardingTourFinished persists the tour as seen`() = runTest {
+        viewModel.onOnboardingTourFinished()
+        advanceUntilIdle()
+        coVerify { prefsRepository.setOnboardingTourSeen() }
+    }
+
+    // --- Review prompt ---
+
+    @Test
+    fun `onReviewRateHighConfirmed sets never-ask`() = runTest {
+        viewModel.onReviewRateHighConfirmed()
+        advanceUntilIdle()
+        coVerify { prefsRepository.setReviewNeverAsk(true) }
+    }
+
+    @Test
+    fun `onReviewSnoozed persists a snooze timestamp in the future`() = runTest {
+        val before = System.currentTimeMillis()
+        viewModel.onReviewSnoozed()
+        advanceUntilIdle()
+        coVerify { prefsRepository.setReviewSnoozedUntil(match { it > before }) }
     }
 }

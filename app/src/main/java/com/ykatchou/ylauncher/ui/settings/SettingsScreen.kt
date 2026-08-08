@@ -276,6 +276,12 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             SectionHeader("Magic button")
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "The magic button sits on your home screen — choose what tap, long press, and double tap do.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+            )
             Spacer(modifier = Modifier.height(8.dp))
 
             ActionPicker(
@@ -386,6 +392,33 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
                     .clickable { context.openDefaultLauncherSettings() }
+                    .padding(vertical = 8.dp),
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "Launch guided tour",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Text(
+                text = "Replay the onboarding tour from the home screen",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                modifier = Modifier.padding(bottom = 4.dp),
+            )
+            Text(
+                text = "Start tour →",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .clickable {
+                        scope.launch {
+                            prefsRepository.resetOnboardingTour()
+                            onBack()
+                        }
+                    }
                     .padding(vertical = 8.dp),
             )
 

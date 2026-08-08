@@ -39,6 +39,8 @@ data class HomePrefs(
     val halTapActionRaw: String = "ASSISTANT",
     val halLongPressActionRaw: String = "SETTINGS",
     val halDoubleTapActionRaw: String = "APP_DRAWER",
+    val reviewNeverAsk: Boolean = false,
+    val reviewSnoozedUntil: Long = 0L,
 )
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "ylauncher_prefs")
@@ -83,9 +85,13 @@ class PrefsRepository @Inject constructor(
         val SHOW_NOTIF_BADGE = booleanPreferencesKey("show_notif_badge")
         val SHOW_DONATION = booleanPreferencesKey("show_donation")
         val FIRST_LAUNCH_TIMESTAMP = longPreferencesKey("first_launch_timestamp")
+        val HAS_SEEN_ONBOARDING_TOUR = booleanPreferencesKey("has_seen_onboarding_tour")
+        val REVIEW_NEVER_ASK = booleanPreferencesKey("review_never_ask")
+        val REVIEW_SNOOZED_UNTIL = longPreferencesKey("review_snoozed_until")
     }
 
     val isFirstLaunch: Flow<Boolean> = dataStore.data.map { it[FIRST_LAUNCH] ?: true }
+    val hasSeenOnboardingTour: Flow<Boolean> = dataStore.data.map { it[HAS_SEEN_ONBOARDING_TOUR] ?: false }
     val autoShowKeyboard: Flow<Boolean> = dataStore.data.map { it[AUTO_SHOW_KEYBOARD] ?: true }
     val showClock: Flow<Boolean> = dataStore.data.map { it[SHOW_CLOCK] ?: true }
     val swipeLeftEnabled: Flow<Boolean> = dataStore.data.map { it[SWIPE_LEFT_ENABLED] ?: true }
@@ -131,6 +137,8 @@ class PrefsRepository @Inject constructor(
             halTapActionRaw = (p[HAL_TAP_ACTION] ?: "ASSISTANT").split(";;").first(),
             halLongPressActionRaw = (p[HAL_LONG_PRESS_ACTION] ?: "SETTINGS").split(";;").first(),
             halDoubleTapActionRaw = (p[HAL_DOUBLE_TAP_ACTION] ?: "APP_DRAWER").split(";;").first(),
+            reviewNeverAsk = p[REVIEW_NEVER_ASK] ?: false,
+            reviewSnoozedUntil = p[REVIEW_SNOOZED_UNTIL] ?: 0L,
         )
     }.distinctUntilChanged()
 
@@ -290,5 +298,21 @@ class PrefsRepository @Inject constructor(
 
     suspend fun setHalDoubleTapAction(action: String) {
         dataStore.edit { it[HAL_DOUBLE_TAP_ACTION] = action }
+    }
+
+    suspend fun setOnboardingTourSeen() {
+        dataStore.edit { it[HAS_SEEN_ONBOARDING_TOUR] = true }
+    }
+
+    suspend fun resetOnboardingTour() {
+        dataStore.edit { it[HAS_SEEN_ONBOARDING_TOUR] = false }
+    }
+
+    suspend fun setReviewNeverAsk(value: Boolean) {
+        dataStore.edit { it[REVIEW_NEVER_ASK] = value }
+    }
+
+    suspend fun setReviewSnoozedUntil(timestampMs: Long) {
+        dataStore.edit { it[REVIEW_SNOOZED_UNTIL] = timestampMs }
     }
 }

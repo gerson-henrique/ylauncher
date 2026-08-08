@@ -26,6 +26,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -81,6 +83,7 @@ fun EditPanelsDialog(
                                     }
                                 },
                                 enabled = idx > 0,
+                                modifier = Modifier.semantics { contentDescription = "Move ${panel.name} up" },
                             ) {
                                 Text("▲", style = MaterialTheme.typography.bodyLarge)
                             }
@@ -92,6 +95,7 @@ fun EditPanelsDialog(
                                     }
                                 },
                                 enabled = idx < editList.size - 1,
+                                modifier = Modifier.semantics { contentDescription = "Move ${panel.name} down" },
                             ) {
                                 Text("▼", style = MaterialTheme.typography.bodyLarge)
                             }
@@ -104,6 +108,7 @@ fun EditPanelsDialog(
                             IconButton(
                                 onClick = { pendingDelete = panel },
                                 enabled = editList.size > 1,
+                                modifier = Modifier.semantics { contentDescription = "Delete ${panel.name}" },
                             ) {
                                 Text("✕", color = MaterialTheme.colorScheme.error)
                             }

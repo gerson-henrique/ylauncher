@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -16,10 +17,15 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -33,10 +39,12 @@ fun EditFavoritesSheet(
     resolveApp: (String) -> AppInfo?,
     onSave: (List<FavoriteApp>) -> Unit,
     onAddFolder: () -> Unit,
+    onAddApp: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val editList = remember(favorites) { favorites.toMutableStateList() }
+    var pendingRemove by remember { mutableStateOf<FavoriteApp?>(null) }
 
     Surface(
         modifier = modifier,
@@ -85,6 +93,7 @@ fun EditFavoritesSheet(
                                 }
                             },
                             enabled = editList.indexOf(favorite) > 0,
+                            modifier = Modifier.semantics { contentDescription = "Move ${favorite.displayName} up" },
                         ) {
                             Text("▲", style = MaterialTheme.typography.bodyLarge)
                         }
@@ -98,6 +107,7 @@ fun EditFavoritesSheet(
                                 }
                             },
                             enabled = editList.indexOf(favorite) < editList.size - 1,
+                            modifier = Modifier.semantics { contentDescription = "Move ${favorite.displayName} down" },
                         ) {
                             Text("▼", style = MaterialTheme.typography.bodyLarge)
                         }
@@ -129,7 +139,10 @@ fun EditFavoritesSheet(
                             modifier = Modifier.weight(1f),
                         )
 
-                        IconButton(onClick = { editList.remove(favorite) }) {
+                        IconButton(
+                            onClick = { pendingRemove = favorite },
+                            modifier = Modifier.semantics { contentDescription = "Remove ${favorite.displayName}" },
+                        ) {
                             Text("✕", color = MaterialTheme.colorScheme.error)
                         }
                     }
@@ -142,13 +155,35 @@ fun EditFavoritesSheet(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                TextButton(onClick = onAddFolder) {
-                    Text("+ Add folder")
+                Row {
+                    TextButton(onClick = onAddApp) {
+                        Text("+ Add app")
+                    }
+                    TextButton(onClick = onAddFolder) {
+                        Text("+ Add folder")
+                    }
                 }
                 TextButton(onClick = onDismiss) {
                     Text("Cancel")
                 }
             }
         }
+    }
+
+    pendingRemove?.let { favorite ->
+        AlertDialog(
+            onDismissRequest = { pendingRemove = null },
+            title = { Text("Remove '${favorite.displayName}'?") },
+            text = { Text("It won't be uninstalled, just removed from your favorites.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    editList.remove(favorite)
+                    pendingRemove = null
+                }) { Text("Remove", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingRemove = null }) { Text("Cancel") }
+            },
+        )
     }
 }

@@ -4,6 +4,7 @@ import android.util.Log
 import app.cash.turbine.test
 import com.ykatchou.ylauncher.data.db.FavoriteDao
 import com.ykatchou.ylauncher.data.db.FolderDao
+import com.ykatchou.ylauncher.data.db.PanelDao
 import com.ykatchou.ylauncher.data.model.FavoriteApp
 import com.ykatchou.ylauncher.data.repository.AppRepository
 import com.ykatchou.ylauncher.data.repository.HomePrefs
@@ -40,6 +41,7 @@ class HomeViewModelErrorTest {
     private lateinit var appRepository: AppRepository
     private lateinit var favoriteDao: FavoriteDao
     private lateinit var folderDao: FolderDao
+    private lateinit var panelDao: PanelDao
     private lateinit var prefsRepository: PrefsRepository
 
     @Before
@@ -60,11 +62,11 @@ class HomeViewModelErrorTest {
         }
         prefsRepository = mockk<PrefsRepository>(relaxed = true) {
             every { activePanel } returns flowOf(0)
-            every { panelNames } returns flowOf(listOf("Perso"))
             every { suggestionCount } returns flowOf(3)
             every { recentAppsCount } returns flowOf(3)
             every { homeWidgetIds } returns flowOf(emptyList())
             every { homePrefs } returns flowOf(HomePrefs())
+            every { hasSeenOnboardingTour } returns flowOf(true)
         }
         favoriteDao = mockk<FavoriteDao>(relaxed = true) {
             every { getAllFavorites() } returns allFavoritesFlow
@@ -72,6 +74,9 @@ class HomeViewModelErrorTest {
         }
         folderDao = mockk<FolderDao>(relaxed = true) {
             every { getAllFolders() } returns flowOf(emptyList())
+        }
+        panelDao = mockk<PanelDao>(relaxed = true) {
+            every { getAllPanels() } returns flowOf(emptyList())
         }
     }
 
@@ -86,6 +91,7 @@ class HomeViewModelErrorTest {
         appRepository = appRepository,
         favoriteDao = favoriteDao,
         folderDao = folderDao,
+        panelDao = panelDao,
         prefsRepository = prefsRepository,
         widgetHost = mockk<LauncherWidgetHost>(relaxed = true),
     )

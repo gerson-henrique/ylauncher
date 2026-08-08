@@ -37,11 +37,14 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import android.service.notification.NotificationListenerService.requestRebind
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -79,19 +82,25 @@ import com.ykatchou.ylauncher.ui.components.AllAppsButton
 import com.ykatchou.ylauncher.ui.components.AppWidgetContainer
 import com.ykatchou.ylauncher.ui.components.ClockWidget
 import com.ykatchou.ylauncher.ui.components.NotificationBubble
+import com.ykatchou.ylauncher.ui.components.ReviewPromptDialog
 import com.ykatchou.ylauncher.ui.components.WidgetPickerDialog
 import com.ykatchou.ylauncher.ui.drawer.AppDrawerScreen
 import com.ykatchou.ylauncher.ui.hal.HalAction
 import com.ykatchou.ylauncher.ui.hal.HalActionExecutor
 import com.ykatchou.ylauncher.ui.hal.HalButton
+import com.ykatchou.ylauncher.ui.onboarding.OnboardingTourOverlay
 import com.ykatchou.ylauncher.ui.theme.HomeTextColor
 import com.ykatchou.ylauncher.ui.theme.HomeTextColorDim
 import com.ykatchou.ylauncher.ui.theme.WallpaperTextShadow
 import com.ykatchou.ylauncher.util.AppLauncher
+import com.ykatchou.ylauncher.util.ONE_WEEK_MS
 import com.ykatchou.ylauncher.util.expandNotificationDrawer
 import com.ykatchou.ylauncher.util.openAppInfo
 import com.ykatchou.ylauncher.util.openCameraApp
 import com.ykatchou.ylauncher.util.openDialerApp
+import com.ykatchou.ylauncher.util.openPlayStoreListing
+import com.ykatchou.ylauncher.util.sendFeedbackEmail
+import com.ykatchou.ylauncher.util.shouldShowReviewPrompt
 import com.ykatchou.ylauncher.util.showToast
 import com.ykatchou.ylauncher.util.uninstallApp
 import androidx.compose.ui.graphics.asImageBitmap
@@ -99,7 +108,6 @@ import androidx.core.graphics.drawable.toBitmap
 import kotlin.math.abs
 
 private const val SWIPE_THRESHOLD = 100f
-private const val ONE_WEEK_MS = 7L * 24 * 60 * 60 * 1000
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
@@ -139,10 +147,20 @@ fun HomeScreen(
     val swipeLeftActivity = homePrefs.swipeLeftActivity
     val swipeRightActivity = homePrefs.swipeRightActivity
     val halAssistantPackage = homePrefs.halAssistantPackage
+    val reviewNeverAsk = homePrefs.reviewNeverAsk
+    val reviewSnoozedUntil = homePrefs.reviewSnoozedUntil
     val billingState by billingManager.billingState.collectAsState()
     val showCoffeeFab = showDonation && firstLaunchTimestamp > 0L &&
         (System.currentTimeMillis() - firstLaunchTimestamp) >= ONE_WEEK_MS
     val showWidgetPicker by com.ykatchou.ylauncher.MainActivity.showWidgetPicker.collectAsState()
+    val hasSeenOnboardingTour by viewModel.hasSeenOnboardingTour.collectAsState()
+    val isReviewPromptEligible = shouldShowReviewPrompt(
+        hasSeenOnboardingTour = hasSeenOnboardingTour == true,
+        reviewNeverAsk = reviewNeverAsk,
+        firstLaunchTimestamp = firstLaunchTimestamp,
+        reviewSnoozedUntil = reviewSnoozedUntil,
+        now = System.currentTimeMillis(),
+    )
 
     // Ensure notification listener is connected and seeded
     LaunchedEffect(Unit) {
@@ -156,11 +174,19 @@ fun HomeScreen(
         NotificationService.reseed()
     }
 
-    // Prompt for usage stats permission if suggested/recent apps are enabled
-    LaunchedEffect(Unit) {
-        if (!viewModel.hasUsageStatsPermission()) {
-            viewModel.requestUsageStatsPermission()
+    // Prompt for usage stats permission if suggested/recent apps are enabled.
+    // Gated on the onboarding tour so it never fires during/alongside it.
+    // Holds the action to run once the user accepts the rationale (request permission, or reimport).
+    var usageStatsRationaleAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    LaunchedEffect(hasSeenOnboardingTour) {
+        if (hasSeenOnboardingTour == true && !viewModel.hasUsageStatsPermission()) {
+            usageStatsRationaleAction = { viewModel.requestUsageStatsPermission() }
         }
+    }
+
+    var showReviewDialog by remember { mutableStateOf(false) }
+    LaunchedEffect(isReviewPromptEligible) {
+        if (isReviewPromptEligible) showReviewDialog = true
     }
 
     // Refresh usage stats every time the home screen resumes (after switching apps, closing app menu, etc.)
@@ -170,6 +196,7 @@ fun HomeScreen(
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.refreshAppsIfEmpty()
                 viewModel.refreshUsageStats()
+                viewModel.autoPopulateFromUsageStatsIfEmpty()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -183,6 +210,7 @@ fun HomeScreen(
 
     var showEditFavorites by remember { mutableStateOf(false) }
     var showBackgroundMenu by remember { mutableStateOf(false) }
+    var showRemoveAllWidgetsConfirm by remember { mutableStateOf(false) }
     var menuOffset by remember { mutableStateOf(DpOffset.Zero) }
     val density = LocalDensity.current
 
@@ -190,6 +218,7 @@ fun HomeScreen(
     var openFolderId by remember { mutableStateOf<Long?>(null) }
     var editingFolderId by remember { mutableStateOf<Long?>(null) }
     var addingAppToFolderId by remember { mutableStateOf<Long?>(null) }
+    var addingAppToFavorites by remember { mutableStateOf(false) }
     var movingFavorite by remember { mutableStateOf<FavoriteApp?>(null) }
     var movingFavoriteToPanel by remember { mutableStateOf<FavoriteApp?>(null) }
     val allFolders by viewModel.getAllFolders().collectAsState(initial = emptyList())
@@ -220,14 +249,18 @@ fun HomeScreen(
                             if (totalDragX > 0 && swipeRightEnabled) {
                                 // Swipe right → Phone (or configured app)
                                 if (swipeRightPackage.isNotBlank()) {
-                                    AppLauncher.launch(context, swipeRightPackage, swipeRightActivity.ifBlank { null })
+                                    if (!AppLauncher.launch(context, swipeRightPackage, swipeRightActivity.ifBlank { null })) {
+                                        context.showToast("App not found")
+                                    }
                                 } else {
                                     context.openDialerApp()
                                 }
                             } else if (totalDragX < 0 && swipeLeftEnabled) {
                                 // Swipe left → Camera (or configured app)
                                 if (swipeLeftPackage.isNotBlank()) {
-                                    AppLauncher.launch(context, swipeLeftPackage, swipeLeftActivity.ifBlank { null })
+                                    if (!AppLauncher.launch(context, swipeLeftPackage, swipeLeftActivity.ifBlank { null })) {
+                                        context.showToast("App not found")
+                                    }
                                 } else {
                                     context.openCameraApp()
                                 }
@@ -295,7 +328,9 @@ fun HomeScreen(
                             NotificationBubble(
                                 notifications = notifications.values.toList(),
                                 resolveAppLabel = { pkg -> appRepository.findAppByPackage(pkg)?.appLabel },
-                                onClickNotification = { pkg -> AppLauncher.launch(context, pkg) },
+                                onClickNotification = { pkg ->
+                                    if (!AppLauncher.launch(context, pkg)) context.showToast("App not found")
+                                },
                                 onDismissNotification = { pkg -> NotificationService.dismiss(pkg) },
                                 modifier = Modifier
                                     .weight(1f)
@@ -337,6 +372,14 @@ fun HomeScreen(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center,
                         ) {
+                            if (favorites.isEmpty()) {
+                                Text(
+                                    text = "No favorites yet\nLong-press here to add apps",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = HomeTextColorDim,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                )
+                            }
                             Column(
                                 modifier = Modifier.verticalScroll(rememberScrollState()),
                             ) {
@@ -362,11 +405,12 @@ fun HomeScreen(
                                             appInfo = appInfo,
                                             displayName = favorite.displayName,
                                             onClick = {
-                                                AppLauncher.launch(
+                                                val launched = AppLauncher.launch(
                                                     context,
                                                     favorite.packageName,
                                                     favorite.activityClassName,
                                                 )
+                                                if (!launched) context.showToast("App not found")
                                             },
                                             notification = notifications[favorite.packageName],
                                             showNotifPreview = showNotifPreview,
@@ -453,7 +497,8 @@ fun HomeScreen(
                                                     .size(48.dp)
                                                     .alpha(if (isSuggested) 0.7f else 0.5f)
                                                     .clickable {
-                                                        AppLauncher.launch(context, app.packageName, app.activityClassName, app.userHandle)
+                                                        val launched = AppLauncher.launch(context, app.packageName, app.activityClassName, app.userHandle)
+                                                        if (!launched) context.showToast("App not found")
                                                     },
                                             )
                                         }
@@ -564,19 +609,62 @@ fun HomeScreen(
             onDismissRequest = { showBackgroundMenu = false },
             offset = menuOffset,
         ) {
+            // Add content
             DropdownMenuItem(
-                text = { Text("Edit favorites") },
-                onClick = { showBackgroundMenu = false; showEditFavorites = true },
+                text = { Text("Add app") },
+                leadingIcon = { Text("📱") },
+                onClick = { showBackgroundMenu = false; addingAppToFavorites = true },
             )
             DropdownMenuItem(
                 text = { Text("Add folder") },
+                leadingIcon = { Text("📁") },
                 onClick = {
                     showBackgroundMenu = false
                     viewModel.createFolder()
                 },
             )
             DropdownMenuItem(
+                text = { Text("Add widget") },
+                leadingIcon = { Text("🧩") },
+                onClick = {
+                    showBackgroundMenu = false
+                    onRequestWidgetPicker()
+                },
+            )
+
+            HorizontalDivider()
+
+            // Manage existing content
+            DropdownMenuItem(
+                text = { Text("Edit favorites") },
+                leadingIcon = { Text("✏️") },
+                onClick = { showBackgroundMenu = false; showEditFavorites = true },
+            )
+            DropdownMenuItem(
+                text = { Text("Reimport favorites") },
+                leadingIcon = { Text("🔄") },
+                onClick = {
+                    showBackgroundMenu = false
+                    if (viewModel.hasUsageStatsPermission()) {
+                        viewModel.reimportFromUsageStats()
+                    } else {
+                        usageStatsRationaleAction = { viewModel.requestUsageStatsPermission() }
+                    }
+                },
+            )
+            if (homeWidgetIds.isNotEmpty()) {
+                DropdownMenuItem(
+                    text = { Text("Remove all widgets") },
+                    leadingIcon = { Text("🗑️") },
+                    onClick = {
+                        showBackgroundMenu = false
+                        showRemoveAllWidgetsConfirm = true
+                    },
+                )
+            }
+            DropdownMenuItem(
                 text = { Text("Change wallpaper") },
+                leadingIcon = { Text("🖼️") },
                 onClick = {
                     showBackgroundMenu = false
                     try {
@@ -596,39 +684,18 @@ fun HomeScreen(
                     }
                 },
             )
-            DropdownMenuItem(
-                text = { Text("Reimport favorites") },
-                onClick = {
-                    showBackgroundMenu = false
-                    if (viewModel.hasUsageStatsPermission()) {
-                        viewModel.reimportFromUsageStats()
-                    } else {
-                        viewModel.requestUsageStatsPermission()
-                    }
-                },
-            )
-            DropdownMenuItem(
-                text = { Text("Add widget") },
-                onClick = {
-                    showBackgroundMenu = false
-                    onRequestWidgetPicker()
-                },
-            )
-            if (homeWidgetIds.isNotEmpty()) {
-                DropdownMenuItem(
-                    text = { Text("Remove all widgets") },
-                    onClick = {
-                        showBackgroundMenu = false
-                        viewModel.removeAllWidgets()
-                    },
-                )
-            }
+
+            HorizontalDivider()
+
+            // App-level
             DropdownMenuItem(
                 text = { Text("Settings") },
+                leadingIcon = { Text("⚙️") },
                 onClick = { showBackgroundMenu = false; onNavigateToSettings() },
             )
             DropdownMenuItem(
                 text = { Text("About") },
+                leadingIcon = { Text("ℹ️") },
                 onClick = { showBackgroundMenu = false; onNavigateToAbout() },
             )
         }
@@ -665,6 +732,10 @@ fun HomeScreen(
                         viewModel.createFolder()
                         showEditFavorites = false
                     },
+                    onAddApp = {
+                        showEditFavorites = false
+                        addingAppToFavorites = true
+                    },
                     onDismiss = { showEditFavorites = false },
                     modifier = Modifier
                         .fillMaxWidth(0.9f)
@@ -688,7 +759,8 @@ fun HomeScreen(
                 folderApps = folderApps,
                 resolveApp = { appRepository.findAppByPackage(it.packageName) },
                 onLaunchApp = { folderApp ->
-                    AppLauncher.launch(context, folderApp.packageName, folderApp.activityClassName)
+                    val launched = AppLauncher.launch(context, folderApp.packageName, folderApp.activityClassName)
+                    if (!launched) context.showToast("App not found")
                     openFolderId = null
                 },
                 onDismissNotification = { pkg -> NotificationService.dismiss(pkg) },
@@ -748,6 +820,27 @@ fun HomeScreen(
             }
         }
 
+        // Drawer in selection mode (for adding app to favorites)
+        if (addingAppToFavorites) {
+            AnimatedVisibility(
+                visible = true,
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+            ) {
+                AppDrawerScreen(
+                    onDismiss = {
+                        addingAppToFavorites = false
+                        showEditFavorites = true
+                    },
+                    onAppSelected = { app ->
+                        viewModel.addFavoriteApp(app)
+                        addingAppToFavorites = false
+                        showEditFavorites = true
+                    },
+                )
+            }
+        }
+
         // Folder picker for "Move to folder"
         if (movingFavorite != null) {
             FolderPickerDialog(
@@ -780,6 +873,68 @@ fun HomeScreen(
                 onWidgetSelected = { provider -> onWidgetSelected(provider) },
                 onDismiss = { onWidgetPickerDismiss() },
             )
+        }
+
+        // Remove-all-widgets confirmation
+        if (showRemoveAllWidgetsConfirm) {
+            AlertDialog(
+                onDismissRequest = { showRemoveAllWidgetsConfirm = false },
+                title = { Text("Remove all widgets?") },
+                text = { Text("This removes every widget from your home screen. You can add them back anytime.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showRemoveAllWidgetsConfirm = false
+                        viewModel.removeAllWidgets()
+                    }) { Text("Remove", color = MaterialTheme.colorScheme.error) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showRemoveAllWidgetsConfirm = false }) { Text("Cancel") }
+                },
+            )
+        }
+
+        // Usage-stats permission rationale, shown once before the settings intent fires
+        usageStatsRationaleAction?.let { action ->
+            AlertDialog(
+                onDismissRequest = { usageStatsRationaleAction = null },
+                title = { Text("Show your most-used apps?") },
+                text = { Text("YLauncher can suggest your most-used apps first, but needs Usage Access permission to see what you open most.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        usageStatsRationaleAction = null
+                        action()
+                    }) { Text("Continue") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { usageStatsRationaleAction = null }) { Text("Not now") }
+                },
+            )
+        }
+
+        // Review prompt — only eligible once the tour has been seen
+        if (showReviewDialog) {
+            ReviewPromptDialog(
+                onRateHigh = {
+                    context.openPlayStoreListing()
+                    viewModel.onReviewRateHighConfirmed()
+                    showReviewDialog = false
+                },
+                onSendFeedback = { text ->
+                    context.sendFeedbackEmail(text)
+                    viewModel.onReviewSnoozed()
+                    showReviewDialog = false
+                },
+                onSnooze = {
+                    viewModel.onReviewSnoozed()
+                    showReviewDialog = false
+                },
+            )
+        }
+
+        // First-run onboarding tour — always highest z-order, shown once.
+        // hasSeenOnboardingTour == null means DataStore hasn't emitted yet; show nothing until known.
+        if (hasSeenOnboardingTour == false) {
+            OnboardingTourOverlay(onFinish = viewModel::onOnboardingTourFinished)
         }
     }
 }
