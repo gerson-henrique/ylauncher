@@ -18,6 +18,7 @@ import androidx.compose.runtime.getValue
 import com.ykatchou.ylauncher.billing.BillingManager
 import com.ykatchou.ylauncher.data.db.PanelDao
 import com.ykatchou.ylauncher.data.repository.AppRepository
+import com.ykatchou.ylauncher.data.repository.ConfigBackupRepository
 import com.ykatchou.ylauncher.data.repository.PrefsRepository
 import com.ykatchou.ylauncher.ui.about.AboutScreen
 import com.ykatchou.ylauncher.ui.home.HomeScreen
@@ -42,6 +43,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var prefsRepository: PrefsRepository
     @Inject lateinit var widgetHost: LauncherWidgetHost
     @Inject lateinit var panelDao: PanelDao
+    @Inject lateinit var configBackupRepository: ConfigBackupRepository
 
     private var pendingWidgetId: Int = AppWidgetManager.INVALID_APPWIDGET_ID
 
@@ -128,6 +130,7 @@ class MainActivity : ComponentActivity() {
                             appRepository = appRepository,
                             billingManager = billingManager,
                             panelDao = panelDao,
+                            configBackupRepository = configBackupRepository,
                             onBack = { navController.popBackStack() },
                         )
                     }

@@ -74,6 +74,11 @@ class HomeViewModel @Inject constructor(
     val panels: StateFlow<List<Panel>> = panelDao.getAllPanels()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    // Panels shown on the home screen / pickers — disabled panels are hidden but keep their favorites.
+    val enabledPanels: StateFlow<List<Panel>> = panels
+        .map { list -> list.filter { it.enabled } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     // Favorites filtered by active panel
     val favorites: StateFlow<List<FavoriteApp>> = combine(
         allFavorites,
@@ -167,6 +172,15 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             com.ykatchou.ylauncher.MainActivity.homePressed.collect { closeDrawer() }
         }
+        // If the active panel gets disabled (or deleted) elsewhere, hop to the first enabled one.
+        viewModelScope.launch {
+            combine(activePanel, enabledPanels) { active, enabled -> active to enabled }
+                .collect { (active, enabled) ->
+                    if (enabled.isNotEmpty() && enabled.none { it.id == active }) {
+                        prefsRepository.setActivePanel(enabled.first().id)
+                    }
+                }
+        }
     }
 
     companion object {
@@ -187,26 +201,26 @@ class HomeViewModel @Inject constructor(
             return
         }
 
-        // Fallback: a small set of sensible defaults most phones already have installed
+        // Fallback: standard apps every phone has a default handler for
         val defaults = mutableListOf<FavoriteApp>()
         var position = 0
 
-        // Play Store
-        appRepository.findAppByPackage("com.android.vending")?.let {
-            defaults.add(FavoriteApp(position++, it.packageName, it.activityClassName, "Play Store", it.userHandle.toString()))
+        fun addDefault(displayName: String, app: AppInfo?) {
+            if (app == null) return
+            defaults.add(FavoriteApp(position++, app.packageName, app.activityClassName, displayName, app.userHandle.toString()))
         }
-        // Chrome
-        appRepository.findAppByPackage("com.android.chrome")?.let {
-            defaults.add(FavoriteApp(position++, it.packageName, it.activityClassName, "Chrome", it.userHandle.toString()))
-        }
-        // Camera
-        appRepository.resolveDefaultApp(Intent(android.provider.MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA))?.let {
-            defaults.add(FavoriteApp(position++, it.packageName, it.activityClassName, "Camera", it.userHandle.toString()))
-        }
-        // Gemini
-        appRepository.findAppByPackage("com.google.android.apps.bard")?.let {
-            defaults.add(FavoriteApp(position++, it.packageName, it.activityClassName, "Gemini", it.userHandle.toString()))
-        }
+
+        addDefault("Messages", appRepository.resolveDefaultApp(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_MESSAGING)))
+        addDefault("Phone", appRepository.resolveDefaultApp(Intent(Intent.ACTION_DIAL)))
+        addDefault(
+            "Camera",
+            appRepository.resolveDefaultApp(Intent(android.provider.MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA)),
+        )
+        addDefault(
+            "Browser",
+            appRepository.resolveDefaultApp(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("http://"))),
+        )
+        addDefault("YouTube", appRepository.findAppByPackage("com.google.android.youtube"))
 
         if (defaults.isNotEmpty()) {
             favoriteDao.insertAll(defaults)
@@ -362,6 +376,17 @@ class HomeViewModel @Inject constructor(
             panelDao.deletePanel(id) // FK cascade removes this panel's favorite_apps rows — installed apps untouched
             if (activePanel.value == id) {
                 prefsRepository.setActivePanel(remaining.first().id)
+            }
+        }
+    }
+
+    fun setPanelEnabled(id: Long, enabled: Boolean) {
+        viewModelScope.launch {
+            val stillEnabled = panels.value.filter { it.enabled && it.id != id }
+            if (!enabled && stillEnabled.isEmpty()) return@launch
+            panelDao.setEnabled(id, enabled)
+            if (!enabled && activePanel.value == id) {
+                prefsRepository.setActivePanel(stillEnabled.first().id)
             }
         }
     }

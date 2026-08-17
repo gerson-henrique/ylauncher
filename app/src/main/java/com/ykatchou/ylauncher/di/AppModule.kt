@@ -2,6 +2,7 @@ package com.ykatchou.ylauncher.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.ykatchou.ylauncher.data.db.FavoriteDao
@@ -87,6 +88,25 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
     }
 }
 
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE panels ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1")
+    }
+}
+
+/**
+ * Brand-new installs create the schema straight at the latest version — no migration runs,
+ * so `panels` would otherwise start empty (only MIGRATION_3_4 seeds a panel, and only when
+ * upgrading an existing v3 database). Without this, first launch has no panel to attach
+ * favorites to and favorite auto-populate fails its panelId FK.
+ */
+private val SEED_DEFAULT_PANEL_CALLBACK = object : RoomDatabase.Callback() {
+    override fun onCreate(db: SupportSQLiteDatabase) {
+        super.onCreate(db)
+        db.execSQL("INSERT INTO panels (id, name, position, enabled) VALUES (0, 'Perso', 0, 1)")
+    }
+}
+
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
@@ -99,7 +119,8 @@ object AppModule {
             YLauncherDatabase::class.java,
             "ylauncher.db"
         )
-            .addMigrations(MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+            .addCallback(SEED_DEFAULT_PANEL_CALLBACK)
             .fallbackToDestructiveMigration()
             .build()
     }

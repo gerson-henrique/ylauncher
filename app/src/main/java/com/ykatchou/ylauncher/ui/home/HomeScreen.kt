@@ -21,6 +21,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -53,6 +54,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
@@ -60,11 +62,14 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -106,8 +111,13 @@ import com.ykatchou.ylauncher.util.uninstallApp
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.graphics.drawable.toBitmap
 import kotlin.math.abs
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private const val SWIPE_THRESHOLD = 100f
+private const val PANEL_SWITCHER_TAP_SLOP = 20f
+private const val PANEL_SWITCHER_LONG_PRESS_MS = 500L
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
@@ -130,7 +140,8 @@ fun HomeScreen(
     val halDoubleTapAction by viewModel.halDoubleTapAction.collectAsState()
     val notifications by NotificationService.notifications.collectAsState()
     val activePanel by viewModel.activePanel.collectAsState()
-    val panels by viewModel.panels.collectAsState()
+    val panels by viewModel.enabledPanels.collectAsState()
+    val allPanels by viewModel.panels.collectAsState()
     val homeWidgetIds by viewModel.homeWidgetIds.collectAsState()
     val appList by appRepository.appList.collectAsState()
     // Unpack frequently-used prefs as local vals for readability
@@ -209,10 +220,24 @@ fun HomeScreen(
     val widgetColumnWidthDp = (screenWidthDp * 0.45f).toInt()
 
     var showEditFavorites by remember { mutableStateOf(false) }
+    var showEditPanels by remember { mutableStateOf(false) }
     var showBackgroundMenu by remember { mutableStateOf(false) }
     var showRemoveAllWidgetsConfirm by remember { mutableStateOf(false) }
     var menuOffset by remember { mutableStateOf(DpOffset.Zero) }
     val density = LocalDensity.current
+    // Bounds of the notification bubble, so swipe-to-dismiss inside it doesn't also
+    // trigger the whole-screen swipe-to-launch-camera/phone gesture below.
+    var notifBubbleBounds by remember { mutableStateOf<Rect?>(null) }
+    LaunchedEffect(showClock, showNotifBubble) {
+        if (!showClock || !showNotifBubble) notifBubbleBounds = null
+    }
+    // Bounds of the panel switcher row, so its own drag-to-switch/long-press-to-edit
+    // gestures don't also trigger the whole-screen swipe-to-launch-camera/phone gesture below.
+    var panelSwitcherBounds by remember { mutableStateOf<Rect?>(null) }
+    // Center-screen label previewing the panel a drag-to-switch gesture is about to land on.
+    var panelPreviewLabel by remember { mutableStateOf<String?>(null) }
+    var panelPreviewHideJob by remember { mutableStateOf<Job?>(null) }
+    val panelPreviewScope = rememberCoroutineScope()
 
     // Folder state
     var openFolderId by remember { mutableStateOf<Long?>(null) }
@@ -230,9 +255,19 @@ fun HomeScreen(
                 .fillMaxSize()
                 .pointerInput(swipeLeftEnabled, swipeRightEnabled) {
                     awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                        val bubbleRect = notifBubbleBounds
+                        if (bubbleRect != null && bubbleRect.contains(down.position)) {
+                            // Let the notification bubble handle its own swipe-to-dismiss/scroll.
+                            return@awaitEachGesture
+                        }
+                        val switcherRect = panelSwitcherBounds
+                        if (switcherRect != null && switcherRect.contains(down.position)) {
+                            // Let the panel switcher handle its own drag-to-switch/long-press-to-edit.
+                            return@awaitEachGesture
+                        }
                         var totalDragX = 0f
                         var totalDragY = 0f
-                        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
                         do {
                             val event = awaitPointerEvent(pass = PointerEventPass.Initial)
                             event.changes.forEach { change ->
@@ -334,7 +369,8 @@ fun HomeScreen(
                                 onDismissNotification = { pkg -> NotificationService.dismiss(pkg) },
                                 modifier = Modifier
                                     .weight(1f)
-                                    .padding(end = 16.dp, top = 4.dp),
+                                    .padding(end = 16.dp, top = 4.dp)
+                                    .onGloballyPositioned { notifBubbleBounds = it.boundsInRoot() },
                             )
                         }
                     }
@@ -519,7 +555,62 @@ fun HomeScreen(
                 ) {
                     // Panel radio buttons
                     FlowRow(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .onGloballyPositioned { panelSwitcherBounds = it.boundsInRoot() }
+                            .pointerInput(panels, activePanel) {
+                                awaitEachGesture {
+                                    val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                                    val downTime = down.uptimeMillis
+                                    var totalDragX = 0f
+                                    var totalDragY = 0f
+                                    var lastUptime = downTime
+                                    var pendingNextIndex = -1
+                                    do {
+                                        val event = awaitPointerEvent(pass = PointerEventPass.Initial)
+                                        event.changes.forEach { change ->
+                                            totalDragX += change.positionChange().x
+                                            totalDragY += change.positionChange().y
+                                            lastUptime = change.uptimeMillis
+                                        }
+
+                                        val liveAbsX = abs(totalDragX)
+                                        val liveAbsY = abs(totalDragY)
+                                        if (panels.size > 1 && maxOf(liveAbsX, liveAbsY) > SWIPE_THRESHOLD) {
+                                            // Slide across panels in the direction of the drag: up/left → previous, down/right → next.
+                                            val currentIndex = panels.indexOfFirst { it.id == activePanel }
+                                            if (currentIndex >= 0) {
+                                                val primaryDelta = if (liveAbsX >= liveAbsY) totalDragX else totalDragY
+                                                val direction = if (primaryDelta < 0) -1 else 1
+                                                pendingNextIndex = (currentIndex + direction + panels.size) % panels.size
+                                                panelPreviewHideJob?.cancel()
+                                                panelPreviewLabel = panels[pendingNextIndex].name
+                                            }
+                                        } else {
+                                            pendingNextIndex = -1
+                                            panelPreviewHideJob?.cancel()
+                                            panelPreviewLabel = null
+                                        }
+                                    } while (event.changes.any { it.pressed })
+
+                                    val absX = abs(totalDragX)
+                                    val absY = abs(totalDragY)
+
+                                    if (pendingNextIndex >= 0) {
+                                        viewModel.switchPanel(panels[pendingNextIndex].id)
+                                        panelPreviewHideJob = panelPreviewScope.launch {
+                                            delay(600)
+                                            panelPreviewLabel = null
+                                        }
+                                    } else if (
+                                        absX < PANEL_SWITCHER_TAP_SLOP &&
+                                        absY < PANEL_SWITCHER_TAP_SLOP &&
+                                        lastUptime - downTime >= PANEL_SWITCHER_LONG_PRESS_MS
+                                    ) {
+                                        showEditPanels = true
+                                    }
+                                }
+                            },
                         horizontalArrangement = Arrangement.Start,
                     ) {
                         panels.forEachIndexed { index, panel ->
@@ -736,6 +827,9 @@ fun HomeScreen(
                         showEditFavorites = false
                         addingAppToFavorites = true
                     },
+                    onMoveToFolder = { favorite, folderId ->
+                        viewModel.moveFavoriteToFolder(favorite, folderId)
+                    },
                     onDismiss = { showEditFavorites = false },
                     modifier = Modifier
                         .fillMaxWidth(0.9f)
@@ -746,6 +840,19 @@ fun HomeScreen(
                         ) { /* consume clicks on sheet, don't dismiss */ },
                 )
             }
+        }
+
+        // Manage panels dialog (long-press on the panel switcher)
+        if (showEditPanels) {
+            EditPanelsDialog(
+                panels = allPanels,
+                onRename = viewModel::renamePanel,
+                onReorder = viewModel::reorderPanels,
+                onDelete = viewModel::deletePanel,
+                onAdd = viewModel::addPanel,
+                onToggleEnabled = viewModel::setPanelEnabled,
+                onDismiss = { showEditPanels = false },
+            )
         }
 
         // Folder popup
@@ -897,8 +1004,8 @@ fun HomeScreen(
         usageStatsRationaleAction?.let { action ->
             AlertDialog(
                 onDismissRequest = { usageStatsRationaleAction = null },
-                title = { Text("Show your most-used apps?") },
-                text = { Text("YLauncher can suggest your most-used apps first, but needs Usage Access permission to see what you open most.") },
+                title = { Text("Show your recommended apps?") },
+                text = { Text("YLauncher can show your last-used and most-recommended apps on the home screen, but needs Usage Access permission to see what you open most.") },
                 confirmButton = {
                     TextButton(onClick = {
                         usageStatsRationaleAction = null
@@ -929,6 +1036,26 @@ fun HomeScreen(
                     showReviewDialog = false
                 },
             )
+        }
+
+        // Center-screen preview of the panel a drag-to-switch gesture is about to land on.
+        AnimatedVisibility(
+            visible = panelPreviewLabel != null,
+            modifier = Modifier.align(Alignment.Center),
+            enter = fadeIn(),
+            exit = fadeOut(),
+        ) {
+            Surface(
+                color = Color.Black.copy(alpha = 0.6f),
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                Text(
+                    text = panelPreviewLabel.orEmpty(),
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
+                )
+            }
         }
 
         // First-run onboarding tour — always highest z-order, shown once.

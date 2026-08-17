@@ -43,4 +43,10 @@ interface FolderDao {
 
     @Query("DELETE FROM folder_apps WHERE packageName = :packageName")
     suspend fun deleteByPackage(packageName: String)
+
+    @Query("DELETE FROM folders")
+    suspend fun deleteAllFolders()
+
+    @Query("DELETE FROM folder_apps")
+    suspend fun deleteAllFolderApps()
 }

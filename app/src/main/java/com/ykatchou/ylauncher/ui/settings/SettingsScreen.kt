@@ -1,5 +1,8 @@
 package com.ykatchou.ylauncher.ui.settings
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -44,6 +47,7 @@ import com.ykatchou.ylauncher.data.db.PanelDao
 import com.ykatchou.ylauncher.data.model.AppInfo
 import com.ykatchou.ylauncher.data.model.Panel
 import com.ykatchou.ylauncher.data.repository.AppRepository
+import com.ykatchou.ylauncher.data.repository.ConfigBackupRepository
 import com.ykatchou.ylauncher.data.repository.PrefsRepository
 import com.ykatchou.ylauncher.ui.components.CoffeeFab
 import com.ykatchou.ylauncher.ui.components.RateFab
@@ -51,7 +55,10 @@ import com.ykatchou.ylauncher.ui.hal.HalAction
 import com.ykatchou.ylauncher.ui.home.EditPanelsDialog
 import com.ykatchou.ylauncher.util.AppIconCache
 import com.ykatchou.ylauncher.util.openDefaultLauncherSettings
+import com.ykatchou.ylauncher.util.showToast
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Locale
 import kotlin.math.roundToInt
 
 @Composable
@@ -60,6 +67,7 @@ fun SettingsScreen(
     appRepository: AppRepository,
     billingManager: BillingManager,
     panelDao: PanelDao,
+    configBackupRepository: ConfigBackupRepository,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -88,6 +96,26 @@ fun SettingsScreen(
     val halLongPress by prefsRepository.halLongPressAction.collectAsState(initial = "SETTINGS")
     val halDoubleTap by prefsRepository.halDoubleTapAction.collectAsState(initial = "APP_DRAWER")
     var showManagePanels by remember { mutableStateOf(false) }
+    var pendingImportUri by remember { mutableStateOf<Uri?>(null) }
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            try {
+                val json = configBackupRepository.exportJson()
+                context.contentResolver.openOutputStream(uri)?.use { it.write(json.toByteArray()) }
+                context.showToast("Configuration exported")
+            } catch (e: Exception) {
+                context.showToast("Export failed: ${e.message}")
+            }
+        }
+    }
+
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri -> if (uri != null) pendingImportUri = uri }
 
     // Local state for sliders to avoid excessive DataStore writes during drag
     var sliderValue by remember(textSizeScale) { mutableFloatStateOf(textSizeScale) }
@@ -235,7 +263,8 @@ fun SettingsScreen(
 
             Column(modifier = Modifier.padding(vertical = 8.dp)) {
                 Text(
-                    text = panels.joinToString(", ") { it.name }.ifBlank { "No panels yet" },
+                    text = panels.joinToString(", ") { if (it.enabled) it.name else "${it.name} (hidden)" }
+                        .ifBlank { "No panels yet" },
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
@@ -422,6 +451,44 @@ fun SettingsScreen(
                     .padding(vertical = 8.dp),
             )
 
+            Spacer(modifier = Modifier.height(16.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            SectionHeader("Backup")
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Panels, favorites, folders and these settings, as one JSON file",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                modifier = Modifier.padding(bottom = 4.dp),
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+            ) {
+                Text(
+                    text = "Export →",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .clickable {
+                            val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(System.currentTimeMillis())
+                            exportLauncher.launch("ylauncher-backup-$stamp.json")
+                        }
+                        .padding(vertical = 8.dp),
+                )
+                Text(
+                    text = "Import →",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .clickable { importLauncher.launch(arrayOf("application/json")) }
+                        .padding(vertical = 8.dp),
+                )
+            }
+
             Spacer(modifier = Modifier.height(32.dp))
 
             Text(
@@ -462,7 +529,51 @@ fun SettingsScreen(
                     }
                 }
             },
+            onToggleEnabled = { id, enabled ->
+                scope.launch {
+                    val stillEnabled = panels.filter { it.enabled && it.id != id }
+                    if (!enabled && stillEnabled.isEmpty()) return@launch
+                    panelDao.setEnabled(id, enabled)
+                    if (!enabled && activePanel == id) {
+                        prefsRepository.setActivePanel(stillEnabled.first().id)
+                    }
+                }
+            },
             onDismiss = { showManagePanels = false },
+        )
+    }
+
+    val importUri = pendingImportUri
+    if (importUri != null) {
+        AlertDialog(
+            onDismissRequest = { pendingImportUri = null },
+            title = { Text("Import configuration?") },
+            text = { Text("This replaces all current panels, favorites, folders and settings on this device. This can't be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            try {
+                                val json = context.contentResolver.openInputStream(importUri)
+                                    ?.use { it.readBytes().toString(Charsets.UTF_8) }
+                                    ?: throw IllegalStateException("Couldn't read file")
+                                configBackupRepository.importJson(json)
+                                context.showToast("Configuration imported")
+                            } catch (e: Exception) {
+                                context.showToast("Import failed: ${e.message}")
+                            }
+                            pendingImportUri = null
+                        }
+                    },
+                ) {
+                    Text("Import", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingImportUri = null }) {
+                    Text("Cancel")
+                }
+            },
         )
     }
 }

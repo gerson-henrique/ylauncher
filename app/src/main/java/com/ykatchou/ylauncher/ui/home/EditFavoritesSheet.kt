@@ -1,14 +1,17 @@
 package com.ykatchou.ylauncher.ui.home
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
@@ -24,12 +27,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.ykatchou.ylauncher.data.model.AppInfo
+import com.ykatchou.ylauncher.ui.components.dragHandle
+import com.ykatchou.ylauncher.ui.components.rememberDragDropListState
 import com.ykatchou.ylauncher.util.AppIconCache
 import com.ykatchou.ylauncher.data.model.FavoriteApp
 
@@ -40,6 +49,7 @@ fun EditFavoritesSheet(
     onSave: (List<FavoriteApp>) -> Unit,
     onAddFolder: () -> Unit,
     onAddApp: () -> Unit,
+    onMoveToFolder: (FavoriteApp, Long) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -75,42 +85,54 @@ fun EditFavoritesSheet(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-            LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
-                items(editList, key = { "${it.packageName}_${it.position}_${it.folderId}" }) { favorite ->
+            val listState = rememberLazyListState()
+            val dragDropState = rememberDragDropListState(
+                listState = listState,
+                canAcceptDrop = { idx -> editList.getOrNull(idx)?.isFolder == true },
+                onDropOnTarget = { from, target ->
+                    val moved = editList.getOrNull(from)
+                    val folderId = editList.getOrNull(target)?.folderId
+                    if (moved != null && folderId != null) {
+                        onMoveToFolder(moved, folderId)
+                        editList.remove(moved)
+                    }
+                },
+            ) { from, to ->
+                val item = editList.removeAt(from)
+                editList.add(to, item)
+            }
+
+            LazyColumn(state = listState, modifier = Modifier.weight(1f, fill = false)) {
+                itemsIndexed(editList, key = { _, it -> "${it.packageName}_${it.position}_${it.folderId}" }) { index, favorite ->
+                    val isDragging = index == dragDropState.draggingItemIndex
+                    val isDropHover = index == dragDropState.hoveredDropTargetIndex
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .offset { dragDropState.offsetForItem(index) }
+                            .zIndex(if (isDragging) 1f else 0f)
+                            .alpha(if (isDragging) 0.9f else 1f)
+                            .clip(MaterialTheme.shapes.medium)
+                            .background(
+                                if (isDropHover) {
+                                    MaterialTheme.colorScheme.primaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.surface
+                                }
+                            )
                             .padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        IconButton(
-                            onClick = {
-                                val idx = editList.indexOf(favorite)
-                                if (idx > 0) {
-                                    val item = editList.removeAt(idx)
-                                    editList.add(idx - 1, item)
-                                }
-                            },
-                            enabled = editList.indexOf(favorite) > 0,
-                            modifier = Modifier.semantics { contentDescription = "Move ${favorite.displayName} up" },
-                        ) {
-                            Text("▲", style = MaterialTheme.typography.bodyLarge)
-                        }
-
-                        IconButton(
-                            onClick = {
-                                val idx = editList.indexOf(favorite)
-                                if (idx < editList.size - 1) {
-                                    val item = editList.removeAt(idx)
-                                    editList.add(idx + 1, item)
-                                }
-                            },
-                            enabled = editList.indexOf(favorite) < editList.size - 1,
-                            modifier = Modifier.semantics { contentDescription = "Move ${favorite.displayName} down" },
-                        ) {
-                            Text("▼", style = MaterialTheme.typography.bodyLarge)
-                        }
+                        Text(
+                            text = "☰",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .padding(8.dp)
+                                .dragHandle(dragDropState, index)
+                                .semantics { contentDescription = "Drag to reorder ${favorite.displayName}" },
+                        )
 
                         // Icon: emoji for folders, app icon for apps
                         if (favorite.isFolder) {
@@ -136,6 +158,8 @@ fun EditFavoritesSheet(
                         Text(
                             text = favorite.displayName,
                             style = MaterialTheme.typography.bodyLarge,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
                         )
 

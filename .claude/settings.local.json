@@ -20,7 +20,11 @@
       "Bash(git commit -m ':*)",
       "Bash(rtk find:*)",
       "Bash(rtk *)",
-      "Bash(adb:*)"
+      "Bash(adb:*)",
+      "Bash(xargs cat:*)",
+      "Bash(JAVA_HOME=\"/Applications/Android Studio.app/Contents/jbr/Contents/Home\" just bump:*)",
+      "Bash(git tag:*)",
+      "Bash(JAVA_HOME=\"/Applications/Android Studio.app/Contents/jbr/Contents/Home\" just release)"
     ]
   }
 }

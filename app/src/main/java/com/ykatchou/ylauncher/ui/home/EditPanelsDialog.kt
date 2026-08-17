@@ -6,15 +6,18 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -26,12 +29,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.zIndex
 import com.ykatchou.ylauncher.data.model.Panel
+import com.ykatchou.ylauncher.ui.components.dragHandle
+import com.ykatchou.ylauncher.ui.components.rememberDragDropListState
 
 @Composable
 fun EditPanelsDialog(
@@ -40,6 +47,7 @@ fun EditPanelsDialog(
     onReorder: (List<Panel>) -> Unit,
     onDelete: (id: Long) -> Unit,
     onAdd: (name: String) -> Unit,
+    onToggleEnabled: (id: Long, enabled: Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val editList = remember(panels) { panels.toMutableStateList() }
@@ -65,45 +73,51 @@ fun EditPanelsDialog(
                 Spacer(modifier = Modifier.height(12.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
 
-                LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
-                    items(editList, key = { it.id }) { panel ->
-                        val idx = editList.indexOf(panel)
+                val listState = rememberLazyListState()
+                val dragDropState = rememberDragDropListState(listState) { from, to ->
+                    val item = editList.removeAt(from)
+                    editList.add(to, item)
+                }
+
+                LazyColumn(state = listState, modifier = Modifier.weight(1f, fill = false)) {
+                    itemsIndexed(editList, key = { _, it -> it.id }) { index, panel ->
+                        val isDragging = index == dragDropState.draggingItemIndex
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 6.dp),
+                                .offset { dragDropState.offsetForItem(index) }
+                                .zIndex(if (isDragging) 1f else 0f)
+                                .alpha(if (isDragging) 0.9f else 1f)
+                                .padding(vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
-                            IconButton(
-                                onClick = {
-                                    if (idx > 0) {
-                                        val item = editList.removeAt(idx)
-                                        editList.add(idx - 1, item)
-                                    }
-                                },
-                                enabled = idx > 0,
-                                modifier = Modifier.semantics { contentDescription = "Move ${panel.name} up" },
-                            ) {
-                                Text("▲", style = MaterialTheme.typography.bodyLarge)
-                            }
-                            IconButton(
-                                onClick = {
-                                    if (idx < editList.size - 1) {
-                                        val item = editList.removeAt(idx)
-                                        editList.add(idx + 1, item)
-                                    }
-                                },
-                                enabled = idx < editList.size - 1,
-                                modifier = Modifier.semantics { contentDescription = "Move ${panel.name} down" },
-                            ) {
-                                Text("▼", style = MaterialTheme.typography.bodyLarge)
-                            }
+                            Text(
+                                text = "☰",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier
+                                    .padding(8.dp)
+                                    .dragHandle(dragDropState, index)
+                                    .semantics { contentDescription = "Drag to reorder ${panel.name}" },
+                            )
                             OutlinedTextField(
                                 value = names[panel.id] ?: panel.name,
                                 onValueChange = { names[panel.id] = it },
                                 singleLine = true,
                                 modifier = Modifier.weight(1f),
+                            )
+                            Switch(
+                                checked = panel.enabled,
+                                onCheckedChange = { checked ->
+                                    onToggleEnabled(panel.id, checked)
+                                    val idxNow = editList.indexOf(panel)
+                                    if (idxNow >= 0) editList[idxNow] = panel.copy(enabled = checked)
+                                },
+                                enabled = panel.enabled.not() || editList.count { it.enabled } > 1,
+                                modifier = Modifier.semantics {
+                                    contentDescription = if (panel.enabled) "Disable ${panel.name}" else "Enable ${panel.name}"
+                                },
                             )
                             IconButton(
                                 onClick = { pendingDelete = panel },
@@ -112,6 +126,9 @@ fun EditPanelsDialog(
                             ) {
                                 Text("✕", color = MaterialTheme.colorScheme.error)
                             }
+                        }
+                        if (index < editList.size - 1) {
+                            HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
                         }
                     }
                 }

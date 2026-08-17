@@ -9,7 +9,7 @@ import com.ykatchou.ylauncher.data.model.Panel
 
 @Database(
     entities = [FavoriteApp::class, Folder::class, FolderApp::class, Panel::class],
-    version = 4,
+    version = 5,
     exportSchema = false,
 )
 abstract class YLauncherDatabase : RoomDatabase() {

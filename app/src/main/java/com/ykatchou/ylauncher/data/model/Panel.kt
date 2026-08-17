@@ -9,4 +9,5 @@ data class Panel(
     val id: Long = 0,
     val name: String,
     val position: Int,
+    val enabled: Boolean = true,
 )

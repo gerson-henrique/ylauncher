@@ -24,6 +24,12 @@ interface PanelDao {
     @Query("UPDATE panels SET name = :name WHERE id = :id")
     suspend fun renamePanel(id: Long, name: String)
 
+    @Query("UPDATE panels SET enabled = :enabled WHERE id = :id")
+    suspend fun setEnabled(id: Long, enabled: Boolean)
+
     @Query("DELETE FROM panels WHERE id = :id")
     suspend fun deletePanel(id: Long)
+
+    @Query("DELETE FROM panels")
+    suspend fun deleteAll()
 }
