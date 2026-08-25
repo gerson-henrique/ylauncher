@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -187,14 +188,26 @@ class HomeViewModel @Inject constructor(
         private const val TAG = "HomeViewModel"
     }
 
+    /**
+     * The active panel straight from DataStore. [activePanel] is a `WhileSubscribed` StateFlow
+     * seeded with 0L, so its `value` can still be that placeholder (or a panel deleted since)
+     * when a write runs — and a favorite written against a panel that does not exist is exactly
+     * the FK violation we must never produce. Reading the pref keeps writes on the panel the
+     * user is actually looking at; FavoriteDao clamps whatever we hand it as the last line of
+     * defence.
+     */
+    private suspend fun currentPanelId(): Long = prefsRepository.activePanel.first()
+
     private suspend fun autoPopulateFavoritesIfNeeded() {
         if (favoriteDao.count() > 0) return
+
+        val panelId = currentPanelId()
 
         // Try usage stats first (imports your real most-used apps)
         val topApps = UsageStatsHelper.getTopApps(context, appRepository, count = 10)
         if (topApps.isNotEmpty()) {
             val favorites = topApps.mapIndexed { index, app ->
-                FavoriteApp(index, app.packageName, app.activityClassName, app.appLabel, app.userHandle.toString())
+                FavoriteApp(index, app.packageName, app.activityClassName, app.appLabel, app.userHandle.toString(), panelId = panelId)
             }
             favoriteDao.insertAll(favorites)
             prefsRepository.setFirstLaunchDone()
@@ -207,7 +220,7 @@ class HomeViewModel @Inject constructor(
 
         fun addDefault(displayName: String, app: AppInfo?) {
             if (app == null) return
-            defaults.add(FavoriteApp(position++, app.packageName, app.activityClassName, displayName, app.userHandle.toString()))
+            defaults.add(FavoriteApp(position++, app.packageName, app.activityClassName, displayName, app.userHandle.toString(), panelId = panelId))
         }
 
         addDefault("Messages", appRepository.resolveDefaultApp(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_MESSAGING)))
@@ -240,8 +253,9 @@ class HomeViewModel @Inject constructor(
             if (favoriteDao.count() > 0) return@launch
             val topApps = UsageStatsHelper.getTopApps(context, appRepository, count = 10)
             if (topApps.isEmpty()) return@launch
+            val panelId = currentPanelId()
             val favorites = topApps.mapIndexed { index, app ->
-                FavoriteApp(index, app.packageName, app.activityClassName, app.appLabel, app.userHandle.toString())
+                FavoriteApp(index, app.packageName, app.activityClassName, app.appLabel, app.userHandle.toString(), panelId = panelId)
             }
             favoriteDao.insertAll(favorites)
         }
@@ -252,7 +266,7 @@ class HomeViewModel @Inject constructor(
             val topApps = UsageStatsHelper.getTopApps(context, appRepository, count = 10)
             if (topApps.isNotEmpty()) {
                 dbWriteMutex.withLock {
-                    val panelId = activePanel.value
+                    val panelId = currentPanelId()
                     favoriteDao.deleteByPanel(panelId)
                     val otherMaxPos = favoriteDao.getAllFavoritesOnce()
                         .maxOfOrNull { it.position } ?: -1
@@ -301,7 +315,7 @@ class HomeViewModel @Inject constructor(
     fun addFavoriteApp(app: AppInfo) {
         viewModelScope.launch {
             dbWriteMutex.withLock {
-                val panelId = activePanel.value
+                val panelId = currentPanelId()
                 val nextPosition = (favoriteDao.getAllFavoritesOnce().maxOfOrNull { it.position } ?: -1) + 1
                 favoriteDao.insertFavorite(
                     FavoriteApp(
@@ -320,7 +334,7 @@ class HomeViewModel @Inject constructor(
     fun saveFavorites(favorites: List<FavoriteApp>) {
         viewModelScope.launch {
             dbWriteMutex.withLock {
-                val panelId = activePanel.value
+                val panelId = currentPanelId()
                 // Delete only this panel's favorites
                 favoriteDao.deleteByPanel(panelId)
                 // Compute a safe starting position that won't collide with other panels
@@ -371,10 +385,13 @@ class HomeViewModel @Inject constructor(
 
     fun deletePanel(id: Long) {
         viewModelScope.launch {
-            val remaining = panels.value.filterNot { it.id == id }
+            // Read the panels back from the DB, not the StateFlow: `panels` may still be its
+            // empty placeholder, and deleting the last panel would leave favorites nothing to
+            // hang off (see FavoriteDao — the panelId foreign key must always resolve).
+            val remaining = panelDao.getAllPanelsOnce().filterNot { it.id == id }
             if (remaining.isEmpty()) return@launch
             panelDao.deletePanel(id) // FK cascade removes this panel's favorite_apps rows — installed apps untouched
-            if (activePanel.value == id) {
+            if (currentPanelId() == id) {
                 prefsRepository.setActivePanel(remaining.first().id)
             }
         }
@@ -382,10 +399,10 @@ class HomeViewModel @Inject constructor(
 
     fun setPanelEnabled(id: Long, enabled: Boolean) {
         viewModelScope.launch {
-            val stillEnabled = panels.value.filter { it.enabled && it.id != id }
+            val stillEnabled = panelDao.getAllPanelsOnce().filter { it.enabled && it.id != id }
             if (!enabled && stillEnabled.isEmpty()) return@launch
             panelDao.setEnabled(id, enabled)
-            if (!enabled && activePanel.value == id) {
+            if (!enabled && currentPanelId() == id) {
                 prefsRepository.setActivePanel(stillEnabled.first().id)
             }
         }
@@ -416,7 +433,7 @@ class HomeViewModel @Inject constructor(
 
     fun createFolder(name: String = "New Folder", emoji: String = "📁") {
         viewModelScope.launch {
-            val panelId = activePanel.value
+            val panelId = currentPanelId()
             val currentFavs = favoriteDao.getAllFavoritesOnce()
             val nextPosition = (currentFavs.maxOfOrNull { it.position } ?: -1) + 1
             val folderId = folderDao.insertFolder(Folder(name = name, position = nextPosition, iconEmoji = emoji))

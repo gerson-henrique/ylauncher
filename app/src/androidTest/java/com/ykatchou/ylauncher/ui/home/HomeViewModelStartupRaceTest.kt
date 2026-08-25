@@ -4,8 +4,10 @@ import android.os.UserHandle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.ykatchou.ylauncher.data.db.FavoriteDao
 import com.ykatchou.ylauncher.data.db.FolderDao
+import com.ykatchou.ylauncher.data.db.PanelDao
 import com.ykatchou.ylauncher.data.model.AppInfo
 import com.ykatchou.ylauncher.data.model.FavoriteApp
+import com.ykatchou.ylauncher.data.model.Panel
 import com.ykatchou.ylauncher.data.repository.AppRepository
 import com.ykatchou.ylauncher.data.repository.HomePrefs
 import com.ykatchou.ylauncher.data.repository.PrefsRepository
@@ -77,8 +79,7 @@ class HomeViewModelStartupRaceTest {
             every { appList } returns appListFlow
         }
         val prefsRepository = mockk<PrefsRepository>(relaxed = true) {
-            every { activePanel } returns flowOf(0)
-            every { panelNames } returns flowOf(listOf("Perso"))
+            every { activePanel } returns flowOf(0L)
             every { suggestionCount } returns flowOf(3)
             every { recentAppsCount } returns flowOf(3)
             every { homeWidgetIds } returns flowOf(emptyList())
@@ -91,12 +92,16 @@ class HomeViewModelStartupRaceTest {
         val folderDao = mockk<FolderDao>(relaxed = true) {
             every { getAllFolders() } returns flowOf(emptyList())
         }
+        val panelDao = mockk<PanelDao>(relaxed = true) {
+            every { getAllPanels() } returns flowOf(listOf(Panel(id = 0, name = "Perso", position = 0)))
+        }
 
         viewModel = HomeViewModel(
             context = mockk(relaxed = true),
             appRepository = appRepository,
             favoriteDao = favoriteDao,
             folderDao = folderDao,
+            panelDao = panelDao,
             prefsRepository = prefsRepository,
             widgetHost = mockk<LauncherWidgetHost>(relaxed = true),
         )

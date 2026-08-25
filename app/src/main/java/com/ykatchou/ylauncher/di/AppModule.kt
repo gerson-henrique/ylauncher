@@ -95,15 +95,32 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
 }
 
 /**
- * Brand-new installs create the schema straight at the latest version — no migration runs,
- * so `panels` would otherwise start empty (only MIGRATION_3_4 seeds a panel, and only when
- * upgrading an existing v3 database). Without this, first launch has no panel to attach
- * favorites to and favorite auto-populate fails its panelId FK.
+ * `panels` must never be empty: `favorite_apps.panelId` is a foreign key onto it, so with no
+ * panel row *every* favorite write fails with SQLITE_CONSTRAINT_FOREIGNKEY. Three paths can
+ * leave it empty — a brand-new install (creates the schema straight at the latest version, so
+ * no migration runs and only MIGRATION_3_4 ever seeds a panel), a destructive migration
+ * (drops and recreates every table without going through onCreate), and any future state that
+ * wipes the table. Seeding on create, on destructive migration *and* on every open covers all
+ * three; the statement is a single idempotent no-op when a panel already exists.
  */
+private const val SEED_DEFAULT_PANEL_SQL =
+    "INSERT INTO panels (id, name, position, enabled) " +
+        "SELECT 0, 'Perso', 0, 1 WHERE NOT EXISTS (SELECT 1 FROM panels)"
+
 private val SEED_DEFAULT_PANEL_CALLBACK = object : RoomDatabase.Callback() {
     override fun onCreate(db: SupportSQLiteDatabase) {
         super.onCreate(db)
-        db.execSQL("INSERT INTO panels (id, name, position, enabled) VALUES (0, 'Perso', 0, 1)")
+        db.execSQL(SEED_DEFAULT_PANEL_SQL)
+    }
+
+    override fun onDestructiveMigration(db: SupportSQLiteDatabase) {
+        super.onDestructiveMigration(db)
+        db.execSQL(SEED_DEFAULT_PANEL_SQL)
+    }
+
+    override fun onOpen(db: SupportSQLiteDatabase) {
+        super.onOpen(db)
+        db.execSQL(SEED_DEFAULT_PANEL_SQL)
     }
 }
 
