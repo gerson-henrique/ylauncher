@@ -118,6 +118,9 @@ import kotlinx.coroutines.launch
 private const val SWIPE_THRESHOLD = 100f
 private const val PANEL_SWITCHER_TAP_SLOP = 20f
 private const val PANEL_SWITCHER_LONG_PRESS_MS = 500L
+// Extra drag distance, past the first panel step, needed to advance one more panel.
+// Keeping it below SWIPE_THRESHOLD lets a single long slide sweep across every panel.
+private const val PANEL_STEP_DISTANCE = 60f
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
@@ -578,11 +581,16 @@ fun HomeScreen(
                                         val liveAbsY = abs(totalDragY)
                                         if (panels.size > 1 && maxOf(liveAbsX, liveAbsY) > SWIPE_THRESHOLD) {
                                             // Slide across panels in the direction of the drag: up/left → previous, down/right → next.
+                                            // The further the finger travels, the more panels the single slide crosses,
+                                            // capped so a drag never loops past the panel it started on.
                                             val currentIndex = panels.indexOfFirst { it.id == activePanel }
                                             if (currentIndex >= 0) {
                                                 val primaryDelta = if (liveAbsX >= liveAbsY) totalDragX else totalDragY
                                                 val direction = if (primaryDelta < 0) -1 else 1
-                                                pendingNextIndex = (currentIndex + direction + panels.size) % panels.size
+                                                val extra = ((abs(primaryDelta) - SWIPE_THRESHOLD) / PANEL_STEP_DISTANCE).toInt()
+                                                val steps = (1 + extra).coerceIn(1, panels.size - 1)
+                                                pendingNextIndex =
+                                                    ((currentIndex + direction * steps) % panels.size + panels.size) % panels.size
                                                 panelPreviewHideJob?.cancel()
                                                 panelPreviewLabel = panels[pendingNextIndex].name
                                             }
