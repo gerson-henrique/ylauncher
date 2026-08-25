@@ -111,6 +111,7 @@ import com.ykatchou.ylauncher.util.uninstallApp
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.graphics.drawable.toBitmap
 import kotlin.math.abs
+import kotlin.math.ceil
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -118,9 +119,13 @@ import kotlinx.coroutines.launch
 private const val SWIPE_THRESHOLD = 100f
 private const val PANEL_SWITCHER_TAP_SLOP = 20f
 private const val PANEL_SWITCHER_LONG_PRESS_MS = 500L
-// Extra drag distance, past the first panel step, needed to advance one more panel.
-// Keeping it below SWIPE_THRESHOLD lets a single long slide sweep across every panel.
-private const val PANEL_STEP_DISTANCE = 60f
+// How far a single slide must travel, as a fraction of the screen height, to loop once
+// through the whole panel list. The per-panel step is derived from this at gesture time,
+// so a lap never costs more than a third of a screen no matter how many panels exist.
+private const val PANEL_SWEEP_HEIGHT_FRACTION = 1f / 3f
+// Upper bound on that derived step, so a short panel list still flips fast instead of
+// spreading one lap across the full sweep budget.
+private const val PANEL_MAX_STEP_DISTANCE = 60f
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
@@ -228,6 +233,8 @@ fun HomeScreen(
     var showRemoveAllWidgetsConfirm by remember { mutableStateOf(false) }
     var menuOffset by remember { mutableStateOf(DpOffset.Zero) }
     val density = LocalDensity.current
+    val panelSweepDistancePx =
+        with(density) { configuration.screenHeightDp.dp.toPx() } * PANEL_SWEEP_HEIGHT_FRACTION
     // Bounds of the notification bubble, so swipe-to-dismiss inside it doesn't also
     // trigger the whole-screen swipe-to-launch-camera/phone gesture below.
     var notifBubbleBounds by remember { mutableStateOf<Rect?>(null) }
@@ -561,7 +568,7 @@ fun HomeScreen(
                         modifier = Modifier
                             .weight(1f)
                             .onGloballyPositioned { panelSwitcherBounds = it.boundsInRoot() }
-                            .pointerInput(panels, activePanel) {
+                            .pointerInput(panels, activePanel, panelSweepDistancePx) {
                                 awaitEachGesture {
                                     val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
                                     val downTime = down.uptimeMillis
@@ -581,14 +588,24 @@ fun HomeScreen(
                                         val liveAbsY = abs(totalDragY)
                                         if (panels.size > 1 && maxOf(liveAbsX, liveAbsY) > SWIPE_THRESHOLD) {
                                             // Slide across panels in the direction of the drag: up/left → previous, down/right → next.
-                                            // The further the finger travels, the more panels the single slide crosses,
-                                            // capped so a drag never loops past the panel it started on.
+                                            // The further the finger travels, the more panels the single slide crosses.
+                                            // Uncapped: the step count wraps around the list, so a long drag keeps
+                                            // looping through the panels instead of stopping at either end.
                                             val currentIndex = panels.indexOfFirst { it.id == activePanel }
                                             if (currentIndex >= 0) {
                                                 val primaryDelta = if (liveAbsX >= liveAbsY) totalDragX else totalDragY
                                                 val direction = if (primaryDelta < 0) -1 else 1
-                                                val extra = ((abs(primaryDelta) - SWIPE_THRESHOLD) / PANEL_STEP_DISTANCE).toInt()
-                                                val steps = (1 + extra).coerceIn(1, panels.size - 1)
+                                                // The gesture arms at SWIPE_THRESHOLD, then every stepDistance past it
+                                                // advances one panel, sized so a full lap of the list costs at most
+                                                // panelSweepDistancePx. PANEL_MAX_STEP_DISTANCE keeps short lists from
+                                                // stretching a lap out to fill that whole budget.
+                                                val stepDistance =
+                                                    ((panelSweepDistancePx - SWIPE_THRESHOLD) / panels.size)
+                                                        .coerceIn(1f, PANEL_MAX_STEP_DISTANCE)
+                                                val steps =
+                                                    ceil((abs(primaryDelta) - SWIPE_THRESHOLD) / stepDistance)
+                                                        .toInt()
+                                                        .coerceAtLeast(1)
                                                 pendingNextIndex =
                                                     ((currentIndex + direction * steps) % panels.size + panels.size) % panels.size
                                                 panelPreviewHideJob?.cancel()
