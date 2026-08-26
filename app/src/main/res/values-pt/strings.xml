@@ -63,4 +63,5 @@
     <string name="choose_wallpaper">Escolher papel de parede</string>
     <string name="stat_compressed">Comprimido</string>
     <string name="stat_gb">%1$s GB</string>
+    <string name="search_apps">Buscar apps…</string>
 </resources>

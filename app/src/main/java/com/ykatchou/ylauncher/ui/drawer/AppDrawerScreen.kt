@@ -168,7 +168,7 @@ fun AppDrawerScreen(
                 onValueChange = { viewModel.updateSearchQuery(it) },
                 placeholder = {
                     Text(
-                        "Search apps...",
+                        stringResource(R.string.search_apps),
                         style = MaterialTheme.typography.bodyLarge,
                     )
                 },
