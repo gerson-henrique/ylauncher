@@ -79,6 +79,7 @@ class HomeViewModelTest {
             folderDao = folderDao,
             panelDao = panelDao,
             prefsRepository = prefsRepository,
+            runningAppsSource = mockk(relaxed = true),
             widgetHost = mockk<LauncherWidgetHost>(relaxed = true),
         )
     }
@@ -170,6 +171,7 @@ class HomeViewModelTest {
                 // hasSeenOnboardingTour intentionally never emits, to simulate the pre-DataStore-load window
                 every { hasSeenOnboardingTour } returns kotlinx.coroutines.flow.emptyFlow()
             },
+            runningAppsSource = mockk(relaxed = true),
             widgetHost = mockk(relaxed = true),
         )
         assertEquals(null, freshViewModel.hasSeenOnboardingTour.value)

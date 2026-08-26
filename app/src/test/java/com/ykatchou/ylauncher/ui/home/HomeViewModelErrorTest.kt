@@ -93,6 +93,7 @@ class HomeViewModelErrorTest {
         folderDao = folderDao,
         panelDao = panelDao,
         prefsRepository = prefsRepository,
+            runningAppsSource = mockk(relaxed = true),
         widgetHost = mockk<LauncherWidgetHost>(relaxed = true),
     )
 

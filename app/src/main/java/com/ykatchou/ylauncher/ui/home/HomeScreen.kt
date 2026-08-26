@@ -386,13 +386,13 @@ fun HomeScreen(
                     }
                 }
 
-                // Middle: Favorites (left) + Widgets (right)
+                // Middle: Running apps (left) + Widgets and pinned apps (right)
                 Row(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth(),
                 ) {
-                    // Left: Favorites
+                    // Left: what is open right now
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -418,85 +418,22 @@ fun HomeScreen(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center,
                         ) {
-                            if (favorites.isEmpty()) {
-                                Text(
-                                    text = "No favorites yet\nLong-press here to add apps",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = HomeTextColorDim,
-                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                                )
-                            }
-                            Column(
-                                modifier = Modifier.verticalScroll(rememberScrollState()),
-                            ) {
-                                favorites.forEach { favorite ->
-                                    if (favorite.isFolder && favorite.folderId != null) {
-                                        FavoriteItem(
-                                            appInfo = null,
-                                            displayName = favorite.displayName,
-                                            iconEmoji = favorite.iconEmoji,
-                                            isFolder = true,
-                                            onClick = { openFolderId = favorite.folderId },
-                                            onEditFavorites = { showEditFavorites = true },
-                                            onEditFolder = { editingFolderId = favorite.folderId },
-                                            onMoveToPanel = if (panels.size > 1) {
-                                                { movingFavoriteToPanel = favorite }
-                                            } else null,
-                                        )
-                                    } else {
-                                        val appInfo: AppInfo? = remember(favorite.packageName, appList) {
-                                            appRepository.findAppByPackage(favorite.packageName)
-                                        }
-                                        FavoriteItem(
-                                            appInfo = appInfo,
-                                            displayName = favorite.displayName,
-                                            onClick = {
-                                                val launched = AppLauncher.launch(
-                                                    context,
-                                                    favorite.packageName,
-                                                    favorite.activityClassName,
-                                                )
-                                                if (!launched) context.showToast("App not found")
-                                            },
-                                            notification = notifications[favorite.packageName],
-                                            showNotifPreview = showNotifPreview,
-                                            showNotifBadge = showNotifBadge,
-                                            onDismissNotification = { NotificationService.dismiss(favorite.packageName) },
-                                            onEditFavorites = { showEditFavorites = true },
-                                            onMoveToFolder = if (allFolders.isNotEmpty()) {
-                                                { movingFavorite = favorite }
-                                            } else null,
-                                            onMoveToPanel = if (panels.size > 1) {
-                                                { movingFavoriteToPanel = favorite }
-                                            } else null,
-                                            onAppInfo = { context.openAppInfo(favorite.packageName) },
-                                            onUninstall = { context.uninstallApp(favorite.packageName) },
-                                        )
-                                    }
-                                }
-
-                                if (showCoffeeFab) {
-                                    FavoriteItem(
-                                        appInfo = null,
-                                        displayName = "Buy me a coffee",
-                                        iconEmoji = "☕",
-                                        isFolder = true,
-                                        onClick = {
-                                            if (billingState == BillingState.READY) {
-                                                (context as? Activity)?.let {
-                                                    billingManager.launchTipPurchase(it)
-                                                }
-                                            } else {
-                                                context.startActivity(
-                                                    Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://ko-fi.com/ykatchou"))
-                                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                                )
-                                            }
-                                        },
-                                        modifier = Modifier.alpha(0.5f),
+                            val runningApps by viewModel.runningApps.collectAsState()
+                            RunningAppsColumn(
+                                apps = runningApps,
+                                canClose = viewModel.canCloseRunningApps,
+                                onOpen = { app ->
+                                    val launched = AppLauncher.launch(
+                                        context, app.packageName, app.activityClassName, app.userHandle,
                                     )
-                                }
-                            }
+                                    if (!launched) context.showToast("App not found")
+                                },
+                                onClose = { app -> viewModel.closeRunningApp(app) },
+                                notifications = notifications,
+                                showNotifPreview = showNotifPreview,
+                                showNotifBadge = showNotifBadge,
+                                onDismissNotification = { pkg -> NotificationService.dismiss(pkg) },
+                            )
                         }
                     }
 

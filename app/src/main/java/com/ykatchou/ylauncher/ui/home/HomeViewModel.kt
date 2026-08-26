@@ -14,6 +14,7 @@ import com.ykatchou.ylauncher.data.model.FolderApp
 import com.ykatchou.ylauncher.data.model.Panel
 import com.ykatchou.ylauncher.data.repository.AppRepository
 import com.ykatchou.ylauncher.data.repository.PrefsRepository
+import com.ykatchou.ylauncher.data.running.RunningAppsSource
 import com.ykatchou.ylauncher.util.ONE_WEEK_MS
 import com.ykatchou.ylauncher.util.UsageStatsHelper
 import com.ykatchou.ylauncher.widget.LauncherWidgetHost
@@ -45,6 +46,7 @@ class HomeViewModel @Inject constructor(
     private val folderDao: FolderDao,
     private val panelDao: PanelDao,
     private val prefsRepository: PrefsRepository,
+    private val runningAppsSource: RunningAppsSource,
     val widgetHost: LauncherWidgetHost,
 ) : ViewModel() {
 
@@ -116,6 +118,30 @@ class HomeViewModel @Inject constructor(
         )
     }.flowOn(Dispatchers.IO)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** Whether the running-apps column should offer drag-to-close at all. */
+    val canCloseRunningApps: Boolean get() = runningAppsSource.canClose
+
+    /**
+     * The left column: what is open right now, most recent first. Recomputed whenever the home
+     * screen comes back to the foreground, since the list goes stale the moment the user leaves.
+     */
+    val runningApps: StateFlow<List<AppInfo>> = combine(
+        _usageStatsVersion,
+        appRepository.appList,
+    ) { _, _ ->
+        runningAppsSource.getRunningApps(RUNNING_APPS_LIMIT)
+    }.flowOn(Dispatchers.IO)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** Ends [app] and drops it from the column. No-op when the source cannot close. */
+    fun closeRunningApp(app: AppInfo) {
+        if (!runningAppsSource.canClose) return
+        viewModelScope.launch(Dispatchers.IO) {
+            runningAppsSource.close(app)
+            refreshUsageStats()
+        }
+    }
 
     /**
      * The pinned right-hand column, resolved to installed apps and kept in the order the
@@ -203,6 +229,9 @@ class HomeViewModel @Inject constructor(
 
     companion object {
         private const val TAG = "HomeViewModel"
+
+        /** Beyond a handful the column stops being a switcher and becomes a list to read. */
+        private const val RUNNING_APPS_LIMIT = 6
     }
 
     /**
@@ -553,4 +582,5 @@ class HomeViewModel @Inject constructor(
         super.onCleared()
         appRepository.unregisterCallback()
     }
+
 }
