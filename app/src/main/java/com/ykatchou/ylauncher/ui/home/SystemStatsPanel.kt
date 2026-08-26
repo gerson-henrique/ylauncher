@@ -54,31 +54,34 @@ fun SystemStatsPanel(
             StatRow(label = stringResource(R.string.stat_cpu), value = "$cpu%", fraction = cpu / 100f)
         }
 
-        // Draw and charge level are different things — one is a flow, the other a quantity — and
-        // sharing a row made the number ambiguous. Draw gets the prominent row because it is the
-        // one that answers this panel's question; the level is context, not a call to action.
-        stats.currentMilliAmps?.let { ma ->
+        stats.batteryPercent?.let { pct ->
             StatRow(
-                label = stringResource(
-                    if (stats.isCharging) R.string.stat_charging else R.string.stat_draw,
-                ),
-                value = stringResource(R.string.stat_milliamps, abs(ma)),
-                fraction = (abs(ma).toFloat() / HEAVY_DRAW_MA).coerceIn(0f, 1f),
-                // While charging the current says nothing about what the apps cost, so the bar
-                // stops meaning "how bad is this" and should not turn amber.
-                warnable = !stats.isCharging,
+                label = stringResource(R.string.stat_battery),
+                value = stringResource(R.string.stat_percent, pct),
+                fraction = pct / 100f,
+                // Battery reads the opposite way to the others: a full bar is good here, an
+                // empty one is the problem. Without this a healthy 90% would glow amber.
+                warnWhenLow = true,
             )
         }
 
+        // Draw carries no bar on purpose. Milliamps have no ceiling to measure against — any
+        // full-bar reference would be a number invented here, and a bar filled against an
+        // invented scale reads as a measurement while meaning nothing. The figure itself is
+        // real, so it stands alone next to the temperature.
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            stats.batteryPercent?.let { pct ->
+            stats.currentMilliAmps?.let { ma ->
                 Text(
-                    text = stringResource(R.string.stat_battery_level, pct),
+                    text = stringResource(
+                        if (stats.isCharging) R.string.stat_charging_ma else R.string.stat_draw_ma,
+                        abs(ma),
+                    ),
                     style = MaterialTheme.typography.labelSmall,
-                    color = HomeTextColorDim,
+                    color = HomeTextColor,
+                    fontWeight = FontWeight.Medium,
                 )
             }
             stats.temperatureCelsius?.let { temp ->
@@ -93,7 +96,14 @@ fun SystemStatsPanel(
 }
 
 @Composable
-private fun StatRow(label: String, value: String, fraction: Float, warnable: Boolean = true) {
+private fun StatRow(
+    label: String,
+    value: String,
+    fraction: Float,
+    /** Warn on an empty bar rather than a full one, for meters where more is better. */
+    warnWhenLow: Boolean = false,
+) {
+    val warn = if (warnWhenLow) fraction <= LOW_FRACTION else fraction >= BUSY_FRACTION
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -126,7 +136,7 @@ private fun StatRow(label: String, value: String, fraction: Float, warnable: Boo
                     .fillMaxWidth(fraction.coerceIn(0f, 1f))
                     .height(3.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(if (warnable && fraction >= BUSY_FRACTION) WarnColor else HomeTextColor),
+                    .background(if (warn) WarnColor else HomeTextColor),
             )
         }
     }
@@ -136,10 +146,6 @@ private fun Long.toGb(): String = "%.1f".format(this / 1_073_741_824f)
 
 private const val HOT_CELSIUS = 42f
 private const val BUSY_FRACTION = 0.85f
+private const val LOW_FRACTION = 0.15f
 
-/**
- * Full-bar reference for the draw meter. Milliamps have no natural ceiling, so this is the point
- * where the drain is heavy enough to be worth acting on rather than a hardware maximum.
- */
-private const val HEAVY_DRAW_MA = 1500f
 private val WarnColor = Color(0xFFE0873F)

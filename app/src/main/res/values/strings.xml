@@ -30,11 +30,7 @@
     <!-- Home: system stats panel -->
     <string name="stat_ram">RAM</string>
     <string name="stat_cpu">CPU</string>
-    <string name="stat_charging">Charging</string>
-    <string name="stat_draw">Draw</string>
     <string name="stat_ram_free">%1$s GB free</string>
-    <string name="stat_milliamps">%1$d mA</string>
-    <string name="stat_battery_level">Battery %1$d%%</string>
     <string name="stat_celsius">%1$s°C</string>
 
     <!-- Favorite / app context menus -->
@@ -60,4 +56,8 @@
     <string name="cannot_uninstall_app">Cannot uninstall app</string>
     <string name="cannot_open_launcher_settings">Cannot open launcher settings</string>
     <string name="no_notifications">No notifications</string>
+    <string name="stat_battery">Battery</string>
+    <string name="stat_percent">%1$d%%</string>
+    <string name="stat_charging_ma">Charging %1$d mA</string>
+    <string name="stat_draw_ma">Draw %1$d mA</string>
 </resources>

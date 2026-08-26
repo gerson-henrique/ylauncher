@@ -28,11 +28,7 @@
     <!-- Tela inicial: painel de status -->
     <string name="stat_ram">RAM</string>
     <string name="stat_cpu">CPU</string>
-    <string name="stat_charging">Carregando</string>
-    <string name="stat_draw">Consumo</string>
     <string name="stat_ram_free">%1$s GB livres</string>
-    <string name="stat_milliamps">%1$d mA</string>
-    <string name="stat_battery_level">Bateria %1$d%%</string>
     <string name="stat_celsius">%1$s°C</string>
 
     <!-- Menus de contexto -->
@@ -58,4 +54,8 @@
     <string name="cannot_uninstall_app">Não foi possível desinstalar o app</string>
     <string name="cannot_open_launcher_settings">Não foi possível abrir os ajustes do launcher</string>
     <string name="no_notifications">Sem notificações</string>
+    <string name="stat_battery">Bateria</string>
+    <string name="stat_percent">%1$d%%</string>
+    <string name="stat_charging_ma">Carregando %1$d mA</string>
+    <string name="stat_draw_ma">Consumo %1$d mA</string>
 </resources>
