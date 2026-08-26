@@ -84,9 +84,15 @@ fun RunningAppsColumn(
                         // gesture — better to under-trigger than to kill a chat mid-message.
                         positionalThreshold = { distance -> distance * 0.5f },
                         confirmValueChange = { value ->
-                            val dismissed = value != SwipeToDismissBoxValue.Settled
-                            if (dismissed) onClose(app)
-                            dismissed
+                            if (value != SwipeToDismissBoxValue.Settled) onClose(app)
+                            // Never confirm the dismiss. Accepting it parks the box in its
+                            // displaced state, which pushes the row off-screen and leaves the red
+                            // "Close" backdrop sitting there — a column of empty red bands once a
+                            // few apps have been closed. The list is the source of truth: the row
+                            // disappears when the app is gone from it, not because the widget
+                            // moved. Refusing here also makes a failed close self-correcting,
+                            // since the row simply springs back.
+                            false
                         },
                     )
                     SwipeToDismissBox(

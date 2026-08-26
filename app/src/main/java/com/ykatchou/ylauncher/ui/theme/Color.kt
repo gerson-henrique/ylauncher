@@ -21,6 +21,17 @@ val HalBezel = Color(0xFF2A2A2E)
 val HomeTextColor = Color.White
 val HomeTextColorDim = Color(0xBBFFFFFF) // 73% white
 
+/**
+ * Accent for anything on the home screen that is a reading rather than a label — meter fills
+ * above all. Mustard because it has to hold up over an arbitrary wallpaper: it stays legible on
+ * the light photos where white washes out, and does not read as an alert the way orange or red
+ * would, so a bar being full is information and not a warning.
+ */
+val HomeAccent = Color(0xFFD4A017)
+
+/** Reserved for the alert state, kept clearly apart from [HomeAccent] so amber never means "fine". */
+val HomeWarn = Color(0xFFC9524C)
+
 // Light theme
 val LightBackground = Color(0xFFFFFBFF)
 val LightOnBackground = Color(0xFF1C1B1E)

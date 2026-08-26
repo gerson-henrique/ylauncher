@@ -21,8 +21,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ykatchou.ylauncher.R
 import com.ykatchou.ylauncher.data.stats.SystemStats
+import com.ykatchou.ylauncher.ui.theme.HomeAccent
 import com.ykatchou.ylauncher.ui.theme.HomeTextColor
 import com.ykatchou.ylauncher.ui.theme.HomeTextColorDim
+import com.ykatchou.ylauncher.ui.theme.HomeWarn
 import kotlin.math.abs
 
 /**
@@ -88,7 +90,7 @@ fun SystemStatsPanel(
                 Text(
                     text = stringResource(R.string.stat_celsius, "%.0f".format(temp)),
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (temp >= HOT_CELSIUS) WarnColor else HomeTextColorDim,
+                    color = if (temp >= HOT_CELSIUS) HomeWarn else HomeTextColorDim,
                 )
             }
         }
@@ -136,7 +138,7 @@ private fun StatRow(
                     .fillMaxWidth(fraction.coerceIn(0f, 1f))
                     .height(3.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(if (warn) WarnColor else HomeTextColor),
+                    .background(if (warn) HomeWarn else HomeAccent),
             )
         }
     }
@@ -148,4 +150,3 @@ private const val HOT_CELSIUS = 42f
 private const val BUSY_FRACTION = 0.85f
 private const val LOW_FRACTION = 0.15f
 
-private val WarnColor = Color(0xFFE0873F)
