@@ -401,7 +401,11 @@ fun HomeScreen(
                             .weight(1f)
                             .fillMaxHeight(),
                     ) {
-                        // Subtle gradient scrim for readability
+                        // Gradient scrim for readability. Deeper than upstream because this
+                        // column now carries the stats panel too — small text and 3dp meter bars,
+                        // which need more separation from the wallpaper than app labels did.
+                        // Still fades to transparent at both ends so it reads as shading rather
+                        // than a panel drawn over the wallpaper.
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -409,9 +413,9 @@ fun HomeScreen(
                                     Brush.verticalGradient(
                                         colors = listOf(
                                             Color.Transparent,
-                                            Color.Black.copy(alpha = 0.15f),
-                                            Color.Black.copy(alpha = 0.25f),
-                                            Color.Black.copy(alpha = 0.15f),
+                                            Color.Black.copy(alpha = 0.28f),
+                                            Color.Black.copy(alpha = 0.42f),
+                                            Color.Black.copy(alpha = 0.28f),
                                             Color.Transparent,
                                         ),
                                     )
