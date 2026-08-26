@@ -349,12 +349,22 @@ fun HomeScreen(
                             .then(if (isLandscape) Modifier.heightIn(max = 60.dp) else Modifier)
                             .height(IntrinsicSize.Min),
                         verticalAlignment = Alignment.Top,
-                        horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        WeatherWidget(
-                            repository = viewModel.weatherRepository,
-                            modifier = Modifier.padding(start = 4.dp, top = 4.dp),
-                        )
+                        // Centred over the left column rather than pinned to the screen edge, so
+                        // it sits above the app list instead of drifting off to the corner.
+                        Box(
+                            modifier = Modifier.fillMaxWidth(0.5f),
+                            contentAlignment = Alignment.TopCenter,
+                        ) {
+                            WeatherWidget(
+                                repository = viewModel.weatherRepository,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                        }
+                        Box(
+                            modifier = Modifier.weight(1f),
+                            contentAlignment = Alignment.TopEnd,
+                        ) {
                         ClockWidget(
                             onClockClick = {
                                 try {
@@ -374,6 +384,7 @@ fun HomeScreen(
                                 } catch (_: Exception) { }
                             },
                         )
+                        }
                     }
                 }
 
