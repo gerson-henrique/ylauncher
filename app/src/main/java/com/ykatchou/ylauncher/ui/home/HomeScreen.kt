@@ -88,7 +88,7 @@ import com.ykatchou.ylauncher.billing.BillingState
 import com.ykatchou.ylauncher.ui.components.AllAppsButton
 import com.ykatchou.ylauncher.ui.components.AppWidgetContainer
 import com.ykatchou.ylauncher.ui.components.ClockWidget
-import com.ykatchou.ylauncher.ui.components.NotificationBubble
+import com.ykatchou.ylauncher.ui.components.WeatherWidget
 import com.ykatchou.ylauncher.ui.components.ReviewPromptDialog
 import com.ykatchou.ylauncher.ui.components.WidgetPickerDialog
 import com.ykatchou.ylauncher.ui.drawer.AppDrawerScreen
@@ -160,7 +160,6 @@ fun HomeScreen(
     val appList by appRepository.appList.collectAsState()
     // Unpack frequently-used prefs as local vals for readability
     val showClock = homePrefs.showClock
-    val showNotifBubble = homePrefs.showNotifBubble
     val showNotifPreview = homePrefs.showNotifPreview
     val showNotifBadge = homePrefs.showNotifBadge
     val showDonation = homePrefs.showDonation
@@ -241,12 +240,6 @@ fun HomeScreen(
     val density = LocalDensity.current
     val panelSweepDistancePx =
         with(density) { configuration.screenHeightDp.dp.toPx() } * PANEL_SWEEP_HEIGHT_FRACTION
-    // Bounds of the notification bubble, so swipe-to-dismiss inside it doesn't also
-    // trigger the whole-screen swipe-to-launch-camera/phone gesture below.
-    var notifBubbleBounds by remember { mutableStateOf<Rect?>(null) }
-    LaunchedEffect(showClock, showNotifBubble) {
-        if (!showClock || !showNotifBubble) notifBubbleBounds = null
-    }
     // Bounds of the panel switcher row, so its own drag-to-switch/long-press-to-edit
     // gestures don't also trigger the whole-screen swipe-to-launch-camera/phone gesture below.
     var panelSwitcherBounds by remember { mutableStateOf<Rect?>(null) }
@@ -272,11 +265,6 @@ fun HomeScreen(
                 .pointerInput(swipeLeftEnabled, swipeRightEnabled) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                        val bubbleRect = notifBubbleBounds
-                        if (bubbleRect != null && bubbleRect.contains(down.position)) {
-                            // Let the notification bubble handle its own swipe-to-dismiss/scroll.
-                            return@awaitEachGesture
-                        }
                         val switcherRect = panelSwitcherBounds
                         if (switcherRect != null && switcherRect.contains(down.position)) {
                             // Let the panel switcher handle its own drag-to-switch/long-press-to-edit.
@@ -347,7 +335,13 @@ fun HomeScreen(
                     .padding(vertical = if (isLandscape) 8.dp else 48.dp),
                 verticalArrangement = Arrangement.SpaceBetween,
             ) {
-                // Top: Clock + notification bubble
+                // Top: weather on the left, clock on the right.
+                //
+                // The notification bubble that used to sit here is gone. It duplicated the system
+                // shade while doing less — no replies, no actions, five items truncated to two
+                // lines — and it needed notification-listener access, the most invasive permission
+                // Android grants, to earn that. The per-app notification summary in the column
+                // uses the same feed and is the part worth having.
                 if (showClock) {
                     Row(
                         modifier = Modifier
@@ -355,7 +349,12 @@ fun HomeScreen(
                             .then(if (isLandscape) Modifier.heightIn(max = 60.dp) else Modifier)
                             .height(IntrinsicSize.Min),
                         verticalAlignment = Alignment.Top,
+                        horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
+                        WeatherWidget(
+                            repository = viewModel.weatherRepository,
+                            modifier = Modifier.padding(start = 4.dp, top = 4.dp),
+                        )
                         ClockWidget(
                             onClockClick = {
                                 try {
@@ -375,20 +374,6 @@ fun HomeScreen(
                                 } catch (_: Exception) { }
                             },
                         )
-                        if (showNotifBubble) {
-                            NotificationBubble(
-                                notifications = notifications.values.toList(),
-                                resolveAppLabel = { pkg -> appRepository.findAppByPackage(pkg)?.appLabel },
-                                onClickNotification = { pkg ->
-                                    if (!AppLauncher.launch(context, pkg)) context.showToast(appNotFound)
-                                },
-                                onDismissNotification = { pkg -> NotificationService.dismiss(pkg) },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .padding(end = 16.dp, top = 4.dp)
-                                    .onGloballyPositioned { notifBubbleBounds = it.boundsInRoot() },
-                            )
-                        }
                     }
                 }
 

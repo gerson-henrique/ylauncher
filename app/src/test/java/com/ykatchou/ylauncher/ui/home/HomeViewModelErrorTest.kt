@@ -95,6 +95,7 @@ class HomeViewModelErrorTest {
         prefsRepository = prefsRepository,
             runningAppsSource = mockk(relaxed = true),
             systemStatsReader = mockk(relaxed = true),
+            weatherRepository = mockk(relaxed = true),
         widgetHost = mockk<LauncherWidgetHost>(relaxed = true),
     )
 

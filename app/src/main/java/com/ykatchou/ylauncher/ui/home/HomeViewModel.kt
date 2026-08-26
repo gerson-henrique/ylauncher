@@ -17,6 +17,7 @@ import com.ykatchou.ylauncher.data.repository.PrefsRepository
 import com.ykatchou.ylauncher.data.running.RunningAppsSource
 import com.ykatchou.ylauncher.data.stats.SystemStats
 import com.ykatchou.ylauncher.data.stats.SystemStatsReader
+import com.ykatchou.ylauncher.data.weather.WeatherRepository
 import com.ykatchou.ylauncher.util.ONE_WEEK_MS
 import com.ykatchou.ylauncher.util.UsageStatsHelper
 import com.ykatchou.ylauncher.widget.LauncherWidgetHost
@@ -52,6 +53,7 @@ class HomeViewModel @Inject constructor(
     private val prefsRepository: PrefsRepository,
     private val runningAppsSource: RunningAppsSource,
     private val systemStatsReader: SystemStatsReader,
+    val weatherRepository: WeatherRepository,
     val widgetHost: LauncherWidgetHost,
 ) : ViewModel() {
 

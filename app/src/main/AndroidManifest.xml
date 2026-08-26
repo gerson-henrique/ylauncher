@@ -16,6 +16,11 @@
         android:name="android.permission.BIND_APPWIDGET"
         tools:ignore="ProtectedPermissions" />
 
+    <!-- Weather readout. Coarse location only: the reading needs to be right to within a city,
+         and the widget uses the fix the system already has rather than waking the GPS. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
     <!-- Lets the running-apps column borrow shell's identity to end an app. Optional: without
          Shizuku installed or running, the column still lists and switches, just cannot close. -->
     <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />

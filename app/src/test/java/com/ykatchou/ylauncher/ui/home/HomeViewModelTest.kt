@@ -81,6 +81,7 @@ class HomeViewModelTest {
             prefsRepository = prefsRepository,
             runningAppsSource = mockk(relaxed = true),
             systemStatsReader = mockk(relaxed = true),
+            weatherRepository = mockk(relaxed = true),
             widgetHost = mockk<LauncherWidgetHost>(relaxed = true),
         )
     }
@@ -174,6 +175,7 @@ class HomeViewModelTest {
             },
             runningAppsSource = mockk(relaxed = true),
             systemStatsReader = mockk(relaxed = true),
+            weatherRepository = mockk(relaxed = true),
             widgetHost = mockk(relaxed = true),
         )
         assertEquals(null, freshViewModel.hasSeenOnboardingTour.value)
