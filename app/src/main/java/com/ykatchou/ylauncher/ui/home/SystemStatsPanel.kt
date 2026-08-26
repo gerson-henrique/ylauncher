@@ -52,34 +52,44 @@ fun SystemStatsPanel(
             StatRow(label = "CPU", value = "$cpu%", fraction = cpu / 100f)
         }
 
-        stats.batteryPercent?.let { pct ->
+        // Draw and charge level are different things — one is a flow, the other a quantity — and
+        // sharing a row made the number ambiguous. Draw gets the prominent row because it is the
+        // one that answers this panel's question; the level is context, not a call to action.
+        stats.currentMilliAmps?.let { ma ->
             StatRow(
-                label = "Bateria",
-                value = buildString {
-                    append("$pct%")
-                    // The draw is the part that reacts to closing an app, so it earns its place
-                    // next to the percentage rather than replacing it.
-                    stats.currentMilliAmps?.let { ma ->
-                        append(if (stats.isCharging) "  ↑" else "  ↓")
-                        append("${abs(ma)} mA")
-                    }
-                },
-                fraction = pct / 100f,
+                label = if (stats.isCharging) "Carregando" else "Consumo",
+                value = "${abs(ma)} mA",
+                fraction = (abs(ma).toFloat() / HEAVY_DRAW_MA).coerceIn(0f, 1f),
+                // While charging the current says nothing about what the apps cost, so the bar
+                // stops meaning "how bad is this" and should not turn amber.
+                warnable = !stats.isCharging,
             )
         }
 
-        stats.temperatureCelsius?.let { temp ->
-            Text(
-                text = "${"%.0f".format(temp)}°C",
-                style = MaterialTheme.typography.labelSmall,
-                color = if (temp >= HOT_CELSIUS) WarnColor else HomeTextColorDim,
-            )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            stats.batteryPercent?.let { pct ->
+                Text(
+                    text = "Bateria $pct%",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = HomeTextColorDim,
+                )
+            }
+            stats.temperatureCelsius?.let { temp ->
+                Text(
+                    text = "${"%.0f".format(temp)}°C",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (temp >= HOT_CELSIUS) WarnColor else HomeTextColorDim,
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun StatRow(label: String, value: String, fraction: Float) {
+private fun StatRow(label: String, value: String, fraction: Float, warnable: Boolean = true) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -112,7 +122,7 @@ private fun StatRow(label: String, value: String, fraction: Float) {
                     .fillMaxWidth(fraction.coerceIn(0f, 1f))
                     .height(3.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(if (fraction >= BUSY_FRACTION) WarnColor else HomeTextColor),
+                    .background(if (warnable && fraction >= BUSY_FRACTION) WarnColor else HomeTextColor),
             )
         }
     }
@@ -122,4 +132,10 @@ private fun Long.toGb(): String = "%.1f".format(this / 1_073_741_824f)
 
 private const val HOT_CELSIUS = 42f
 private const val BUSY_FRACTION = 0.85f
+
+/**
+ * Full-bar reference for the draw meter. Milliamps have no natural ceiling, so this is the point
+ * where the drain is heavy enough to be worth acting on rather than a hardware maximum.
+ */
+private const val HEAVY_DRAW_MA = 1500f
 private val WarnColor = Color(0xFFE0873F)
