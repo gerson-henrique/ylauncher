@@ -55,10 +55,12 @@
     <string name="no_notifications">Sem notificações</string>
     <string name="stat_charging_ma">Carregando %1$d mA</string>
     <string name="stat_draw_ma">Consumo %1$d mA</string>
-    <string name="stat_load">Carga</string>
     <!-- "1 serviços" was wrong; a count needs real plural rules, not a fixed suffix. -->
     <plurals name="stat_services">
         <item quantity="one">%1$d serviço</item>
         <item quantity="other">%1$d serviços</item>
     </plurals>
+    <string name="choose_wallpaper">Escolher papel de parede</string>
+    <string name="stat_compressed">Comprimido</string>
+    <string name="stat_gb">%1$s GB</string>
 </resources>

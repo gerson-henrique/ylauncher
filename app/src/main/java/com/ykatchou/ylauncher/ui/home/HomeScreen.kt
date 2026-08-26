@@ -146,6 +146,7 @@ fun HomeScreen(
     // click lambdas and gesture callbacks, which are not.
     val appNotFound = stringResource(R.string.app_not_found)
     val noWallpaperPicker = stringResource(R.string.no_wallpaper_picker)
+    val chooseWallpaper = stringResource(R.string.choose_wallpaper)
     val favorites by viewModel.favorites.collectAsState()
     val homePrefs by viewModel.homePrefs.collectAsState()
     val isDrawerOpen by viewModel.isDrawerOpen.collectAsState()
@@ -734,15 +735,24 @@ fun HomeScreen(
                 leadingIcon = { Text("🖼️") },
                 onClick = {
                     showBackgroundMenu = false
+                    // ACTION_SET_WALLPAPER is the one that opens the picker people mean by
+                    // "change wallpaper". The two actions tried before both need arguments that
+                    // were never passed: CHANGE_LIVE_WALLPAPER wants a live-wallpaper component
+                    // in EXTRA_LIVE_WALLPAPER_COMPONENT and lands on an empty preview without it,
+                    // and CROP_AND_SET_WALLPAPER wants an image URI in setData.
                     try {
                         context.startActivity(
-                            Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
-                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            Intent.createChooser(
+                                Intent(Intent.ACTION_SET_WALLPAPER),
+                                chooseWallpaper,
+                            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         )
                     } catch (_: Exception) {
+                        // Falling back to the live-wallpaper list only if no picker handles the
+                        // plain action at all — a stripped ROM, not the normal path.
                         try {
                             context.startActivity(
-                                Intent(WallpaperManager.ACTION_CROP_AND_SET_WALLPAPER)
+                                Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
                                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             )
                         } catch (_: Exception) {

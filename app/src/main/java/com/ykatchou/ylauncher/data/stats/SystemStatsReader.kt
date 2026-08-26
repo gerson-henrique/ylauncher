@@ -33,7 +33,8 @@ class SystemStatsReader @Inject constructor(
             memAvailableBytes = mem?.second,
             memTotalBytes = mem?.first,
             cpuPercent = readCpuPercent(),
-            loadAverage = readLoadAverage(),
+            swapUsedBytes = mem?.let { it.third - it.fourth },
+            swapTotalBytes = mem?.third,
             netRxBytesPerSec = netRate.first,
             netTxBytesPerSec = netRate.second,
             foregroundServices = readForegroundServices(),
@@ -42,19 +43,31 @@ class SystemStatsReader @Inject constructor(
         )
     }
 
-    /** Total and available bytes. Readable without any permission. */
-    private fun readMemInfo(): Pair<Long, Long>? = runCatching {
+    /**
+     * RAM total/available and the zram pool total/free, in bytes. All four come from the same
+     * file, readable without any permission.
+     */
+    private data class MemInfo(val first: Long, val second: Long, val third: Long, val fourth: Long)
+
+    private fun readMemInfo(): MemInfo? = runCatching {
         var total: Long? = null
         var available: Long? = null
+        var swapTotal: Long? = null
+        var swapFree: Long? = null
         File("/proc/meminfo").forEachLine { line ->
             when {
                 line.startsWith("MemTotal:") -> total = line.kbValue()
                 line.startsWith("MemAvailable:") -> available = line.kbValue()
+                line.startsWith("SwapTotal:") -> swapTotal = line.kbValue()
+                line.startsWith("SwapFree:") -> swapFree = line.kbValue()
             }
         }
-        val t = total ?: return null
-        val a = available ?: return null
-        t to a
+        MemInfo(
+            first = total ?: return null,
+            second = available ?: return null,
+            third = swapTotal ?: 0L,
+            fourth = swapFree ?: 0L,
+        )
     }.getOrNull()
 
     /** `MemTotal:       12065156 kB` -> bytes */
@@ -87,16 +100,6 @@ class SystemStatsReader @Inject constructor(
             ?.let { it / 10f }
     }.getOrNull()
 
-    /**
-     * 1-minute load average. `/proc/loadavg` is Permission denied to an ordinary app — verified on
-     * device — so this is Shizuku-only, and absent rather than faked without it.
-     */
-    private fun readLoadAverage(): Float? =
-        ShizukuShell.run("cat /proc/loadavg")
-            ?.trim()
-            ?.split(" ")
-            ?.firstOrNull()
-            ?.toFloatOrNull()
 
     /**
      * Apps holding a foreground service. This is the number the running-apps column cannot show:

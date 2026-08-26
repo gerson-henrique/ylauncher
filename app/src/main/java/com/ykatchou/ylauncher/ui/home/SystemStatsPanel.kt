@@ -57,17 +57,19 @@ fun SystemStatsPanel(
             StatRow(label = stringResource(R.string.stat_cpu), value = "$cpu%", fraction = cpu / 100f)
         }
 
-        // Load average, not battery. Charge level already lives in the status bar two
-        // centimetres above this, and it is the one reading here that says nothing about what the
-        // open apps are doing.
+        // Compressed memory, not battery level — that one sits in the status bar two centimetres
+        // above this and says nothing about what the open apps are doing.
         //
-        // Load is not CPU percentage restated: percentage is how busy the cores are, load is how
-        // many processes are queued for them. A core can sit at 100% with nothing waiting, or at
-        // 40% with a queue ten deep — the second is what makes a phone feel slow.
-        stats.loadFraction?.let { fraction ->
+        // This deliberately disagrees with the RAM row above it. MemAvailable counts reclaimable
+        // cache, so it reads comfortable while the kernel is already compressing pages to cope.
+        // Swap in use only happens under real pressure, which makes it the honest signal of the
+        // two. Load average was tried here first and removed: on this MediaTek chipset eight
+        // watchdog kernel threads sit permanently in uninterruptible sleep, adding a fixed +8 to
+        // the figure, so it read as heavy load on an idle device.
+        stats.swapUsedFraction?.let { fraction ->
             StatRow(
-                label = stringResource(R.string.stat_load),
-                value = "%.1f".format(stats.loadAverage) + " / ${stats.cpuCores}",
+                label = stringResource(R.string.stat_compressed),
+                value = stats.swapUsedBytes?.let { stringResource(R.string.stat_gb, it.toGb()) } ?: "",
                 fraction = fraction,
             )
         }
