@@ -94,6 +94,7 @@ class HomeViewModelErrorTest {
         panelDao = panelDao,
         prefsRepository = prefsRepository,
             runningAppsSource = mockk(relaxed = true),
+            systemStatsReader = mockk(relaxed = true),
         widgetHost = mockk<LauncherWidgetHost>(relaxed = true),
     )
 

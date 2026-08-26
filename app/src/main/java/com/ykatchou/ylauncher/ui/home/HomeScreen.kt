@@ -414,26 +414,40 @@ fun HomeScreen(
                                     )
                                 )
                         )
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            val runningApps by viewModel.runningApps.collectAsState()
-                            RunningAppsColumn(
-                                apps = runningApps,
-                                canClose = viewModel.canCloseRunningApps,
-                                onOpen = { app ->
-                                    val launched = AppLauncher.launch(
-                                        context, app.packageName, app.activityClassName, app.userHandle,
-                                    )
-                                    if (!launched) context.showToast("App not found")
-                                },
-                                onClose = { app -> viewModel.closeRunningApp(app) },
-                                notifications = notifications,
-                                showNotifPreview = showNotifPreview,
-                                showNotifBadge = showNotifBadge,
-                                onDismissNotification = { pkg -> NotificationService.dismiss(pkg) },
-                            )
+                        // Two thirds for what is open, one third for what it costs.
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(2f)
+                                    .fillMaxWidth(),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                val runningApps by viewModel.runningApps.collectAsState()
+                                RunningAppsColumn(
+                                    apps = runningApps,
+                                    canClose = viewModel.canCloseRunningApps,
+                                    onOpen = { app ->
+                                        val launched = AppLauncher.launch(
+                                            context, app.packageName, app.activityClassName, app.userHandle,
+                                        )
+                                        if (!launched) context.showToast("App not found")
+                                    },
+                                    onClose = { app -> viewModel.closeRunningApp(app) },
+                                    notifications = notifications,
+                                    showNotifPreview = showNotifPreview,
+                                    showNotifBadge = showNotifBadge,
+                                    onDismissNotification = { pkg -> NotificationService.dismiss(pkg) },
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth(),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                val stats by viewModel.systemStats.collectAsState()
+                                SystemStatsPanel(stats = stats)
+                            }
                         }
                     }
 

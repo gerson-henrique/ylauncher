@@ -15,6 +15,8 @@ import com.ykatchou.ylauncher.data.model.Panel
 import com.ykatchou.ylauncher.data.repository.AppRepository
 import com.ykatchou.ylauncher.data.repository.PrefsRepository
 import com.ykatchou.ylauncher.data.running.RunningAppsSource
+import com.ykatchou.ylauncher.data.stats.SystemStats
+import com.ykatchou.ylauncher.data.stats.SystemStatsReader
 import com.ykatchou.ylauncher.util.ONE_WEEK_MS
 import com.ykatchou.ylauncher.util.UsageStatsHelper
 import com.ykatchou.ylauncher.widget.LauncherWidgetHost
@@ -31,6 +33,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -47,6 +51,7 @@ class HomeViewModel @Inject constructor(
     private val panelDao: PanelDao,
     private val prefsRepository: PrefsRepository,
     private val runningAppsSource: RunningAppsSource,
+    private val systemStatsReader: SystemStatsReader,
     val widgetHost: LauncherWidgetHost,
 ) : ViewModel() {
 
@@ -121,6 +126,20 @@ class HomeViewModel @Inject constructor(
 
     /** Whether the running-apps column should offer drag-to-close at all. */
     val canCloseRunningApps: Boolean get() = runningAppsSource.canClose
+
+    /**
+     * Live readings for the panel under the running-apps column. Polled rather than pushed,
+     * because none of these sources emit events, and only while the home screen is actually being
+     * looked at — WhileSubscribed stops the loop the moment the user opens an app, so this costs
+     * nothing in the background.
+     */
+    val systemStats: StateFlow<SystemStats> = flow {
+        while (true) {
+            emit(systemStatsReader.read())
+            delay(STATS_INTERVAL_MS)
+        }
+    }.flowOn(Dispatchers.IO)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SystemStats())
 
     /**
      * The left column: what is open right now, most recent first. Recomputed whenever the home
@@ -232,6 +251,9 @@ class HomeViewModel @Inject constructor(
 
         /** Beyond a handful the column stops being a switcher and becomes a list to read. */
         private const val RUNNING_APPS_LIMIT = 6
+
+        /** Fast enough to feel live, slow enough not to be a battery cost of its own. */
+        private const val STATS_INTERVAL_MS = 3000L
     }
 
     /**

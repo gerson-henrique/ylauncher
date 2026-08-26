@@ -442,6 +442,38 @@
 
 <p class="cav">Ressalva sobre o número: é contagem de eventos no buffer atual do sistema, não histórico de vida inteira. Serve para ordenar, não como métrica absoluta.</p>
 
+<h2>O painel de status</h2>
+<p class="sub">A coluna esquerda se divide: dois terços para os apps abertos, um terço abaixo para o que eles estão custando.</p>
+
+<p>O pedido não é por um monitor de sistema — existem dezenas na loja e todos mostram tudo. É por dados <b>complementares aos apps abertos</b>, o que dá ao painel uma pergunta única para responder: <b>vale a pena fechar alguma coisa agora?</b> Essa pergunta é o filtro. Métrica que não ajuda a respondê-la fica de fora, por mais interessante que pareça.</p>
+
+<p>Por isso frequência de clock, contagem de ciclos e detalhes de rede não entram: são bonitos num monitor e mudos aqui. O que entra:</p>
+
+<div class="opts">
+  <div class="opt pick">
+    <div class="opt-h"><b>Memória livre</b> <span class="v">o mais direto</span></div>
+    <p>Cada app aberto ocupa RAM. É a métrica que se move quando você fecha algo, então é a que fecha o laço com a coluna de cima.</p>
+  </div>
+  <div class="opt pick">
+    <div class="opt-h"><b>Consumo instantâneo</b> <span class="v">o mais honesto</span></div>
+    <p>Nível de bateria sozinho não diz nada sobre os apps. A corrente em mA diz: mostra o custo <em>agora</em>, e reage a fechar um app enquanto a porcentagem levaria horas para se mover.</p>
+  </div>
+  <div class="opt pick">
+    <div class="opt-h"><b>Uso de CPU</b> <span class="v">exige Shizuku</span></div>
+    <p>Distingue app aberto e parado de app aberto e trabalhando — a diferença que decide o que fechar.</p>
+  </div>
+  <div class="opt">
+    <div class="opt-h"><b>Temperatura</b> <span class="v">o sintoma</span></div>
+    <p>Não é causa de nada, mas é o sinal que a pessoa sente na mão e liga ao aparelho estar sofrendo.</p>
+  </div>
+</div>
+
+<div class="call">
+  <p class="k">Medido no aparelho, não suposto</p>
+  <p><code>/proc/meminfo</code> o app lê direto. <code>/proc/stat</code> responde <b>Permission denied</b> — bloqueado para apps comuns desde o Android 7, então CPU só existe com Shizuku. Bateria e corrente vêm das APIs públicas, sem privilégio nenhum.</p>
+  <p>É a mesma degradação da coluna de apps, e por sorte na ordem certa: o que exige privilégio é justamente o dado menos essencial. Sem Shizuku o painel perde a linha de CPU e mantém o resto.</p>
+</div>
+
 <h2>Riscos anotados</h2>
 <ul>
   <li><b>Shizuku morre no reboot.</b> É o motivo do desenho híbrido. Vale medir quanto isso incomoda na prática antes de considerar alternativas mais invasivas.</li>
