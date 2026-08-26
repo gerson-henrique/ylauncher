@@ -500,10 +500,9 @@ fun HomeScreen(
                         }
                     }
 
-                    // Right: Widgets + Suggested/Recent apps
-                    val suggestedApps by viewModel.suggestedApps.collectAsState()
-                    val recentApps by viewModel.recentApps.collectAsState()
-                    if (homeWidgetIds.isNotEmpty() || suggestedApps.isNotEmpty() || recentApps.isNotEmpty()) {
+                    // Right: Widgets + the pinned quick-apps column
+                    val quickApps by viewModel.quickApps.collectAsState()
+                    if (homeWidgetIds.isNotEmpty() || quickApps.isNotEmpty()) {
                         Column(
                             modifier = Modifier
                                 .fillMaxHeight()
@@ -522,16 +521,14 @@ fun HomeScreen(
                                         .padding(vertical = 4.dp),
                                 )
                             }
-                            val allSuggestedRecent = suggestedApps + recentApps
-                            if (allSuggestedRecent.isNotEmpty()) {
+                            if (quickApps.isNotEmpty()) {
                                 if (homeWidgetIds.isNotEmpty()) Spacer(modifier = Modifier.height(12.dp))
                                 Column(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalAlignment = Alignment.End,
                                     verticalArrangement = Arrangement.spacedBy(12.dp),
                                 ) {
-                                    allSuggestedRecent.forEach { app ->
-                                        val isSuggested = app in suggestedApps
+                                    quickApps.forEach { app ->
                                         val bitmap = remember(app.icon) {
                                             app.icon?.toBitmap(width = 48, height = 48)?.asImageBitmap()
                                         }
@@ -539,9 +536,10 @@ fun HomeScreen(
                                             Image(
                                                 bitmap = bitmap,
                                                 contentDescription = app.appLabel,
+                                                // Pinned apps are a deliberate choice, not a guess:
+                                                // shown at full strength, unlike the faded suggestions before.
                                                 modifier = Modifier
                                                     .size(48.dp)
-                                                    .alpha(if (isSuggested) 0.7f else 0.5f)
                                                     .clickable {
                                                         val launched = AppLauncher.launch(context, app.packageName, app.activityClassName, app.userHandle)
                                                         if (!launched) context.showToast("App not found")

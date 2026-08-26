@@ -117,6 +117,23 @@ class HomeViewModel @Inject constructor(
     }.flowOn(Dispatchers.IO)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    /**
+     * The pinned right-hand column, resolved to installed apps and kept in the order the
+     * user set. A package that is not installed simply drops out instead of leaving a hole.
+     * Where the same package exists in both the personal and the work profile, the personal
+     * one wins — the column is a shortcut, not a profile switcher.
+     */
+    val quickApps: StateFlow<List<AppInfo>> = combine(
+        prefsRepository.quickApps,
+        appRepository.appList,
+    ) { packages, apps ->
+        val mine = android.os.Process.myUserHandle()
+        packages.mapNotNull { pkg ->
+            val matches = apps.filter { it.packageName == pkg }
+            matches.firstOrNull { it.userHandle == mine } ?: matches.firstOrNull()
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     val homeWidgetIds = prefsRepository.homeWidgetIds
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -128,7 +145,7 @@ class HomeViewModel @Inject constructor(
     // Magic-button (HAL) actions are global, shared across all panels.
     val halTapAction: StateFlow<String> = homePrefs
         .map { it.halTapActionRaw }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "ASSISTANT")
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), PrefsRepository.DEFAULT_HAL_TAP_ACTION)
 
     val halLongPressAction: StateFlow<String> = homePrefs
         .map { it.halLongPressActionRaw }

@@ -92,7 +92,7 @@ fun SettingsScreen(
     val showDonation by prefsRepository.showDonation.collectAsState(initial = true)
     val billingState by billingManager.billingState.collectAsState()
     val activePanel by prefsRepository.activePanel.collectAsState(initial = 0L)
-    val halTap by prefsRepository.halTapAction.collectAsState(initial = "ASSISTANT")
+    val halTap by prefsRepository.halTapAction.collectAsState(initial = PrefsRepository.DEFAULT_HAL_TAP_ACTION)
     val halLongPress by prefsRepository.halLongPressAction.collectAsState(initial = "SETTINGS")
     val halDoubleTap by prefsRepository.halDoubleTapAction.collectAsState(initial = "APP_DRAWER")
     var showManagePanels by remember { mutableStateOf(false) }
@@ -180,51 +180,10 @@ fun SettingsScreen(
                 )
             }
 
-            // Suggestion count slider
-            Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                Text(
-                    text = "Suggested apps",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                Text(
-                    text = if (suggestionSlider.roundToInt() == 0) "Off" else "${suggestionSlider.roundToInt()} most used",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-                )
-                Slider(
-                    value = suggestionSlider,
-                    onValueChange = { suggestionSlider = it },
-                    onValueChangeFinished = {
-                        scope.launch { prefsRepository.setSuggestionCount(suggestionSlider.roundToInt()) }
-                    },
-                    valueRange = 0f..8f,
-                    steps = 7,
-                )
-            }
-
-            // Recent apps count slider
-            Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                Text(
-                    text = "Recent apps",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                Text(
-                    text = if (recentSlider.roundToInt() == 0) "Off" else "${recentSlider.roundToInt()} last used",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-                )
-                Slider(
-                    value = recentSlider,
-                    onValueChange = { recentSlider = it },
-                    onValueChangeFinished = {
-                        scope.launch { prefsRepository.setRecentAppsCount(recentSlider.roundToInt()) }
-                    },
-                    valueRange = 0f..8f,
-                    steps = 7,
-                )
-            }
+            // The "Suggested apps" and "Recent apps" sliders lived here. The right-hand column
+            // is now a fixed set of pinned apps instead of a usage-ranked guess, so the sliders
+            // no longer controlled anything on screen. The underlying prefs are kept so existing
+            // config backups still restore cleanly.
 
             Spacer(modifier = Modifier.height(16.dp))
             HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f))

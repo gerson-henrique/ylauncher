@@ -36,7 +36,7 @@ data class HomePrefs(
     val swipeLeftActivity: String = "",
     val swipeRightActivity: String = "",
     val halAssistantPackage: String = "com.google.android.apps.googleassistant",
-    val halTapActionRaw: String = "ASSISTANT",
+    val halTapActionRaw: String = PrefsRepository.DEFAULT_HAL_TAP_ACTION,
     val halLongPressActionRaw: String = "SETTINGS",
     val halDoubleTapActionRaw: String = "APP_DRAWER",
     val reviewNeverAsk: Boolean = false,
@@ -52,6 +52,23 @@ class PrefsRepository @Inject constructor(
     private val dataStore = context.dataStore
 
     companion object Keys {
+        /**
+         * Upstream opens the assistant on tap. This fork opens the browser instead — it is the
+         * single most-reached-for app here, and the assistant was never the point of the button.
+         */
+        const val DEFAULT_HAL_TAP_ACTION = "CUSTOM_APP:com.android.chrome:"
+
+        /** How many packages the right-hand column holds. */
+        const val QUICK_APPS_MAX = 4
+        private const val SEP = ","
+        private val DEFAULT_QUICK_APPS = listOf(
+            "com.whatsapp",
+            "com.mercadopago.wallet",
+            "com.instagram.android",
+            "com.spotify.music",
+        ).joinToString(SEP)
+
+        val QUICK_APPS = stringPreferencesKey("quick_apps")
         val FIRST_LAUNCH = booleanPreferencesKey("first_launch")
         val AUTO_SHOW_KEYBOARD = booleanPreferencesKey("auto_show_keyboard")
         val SWIPE_LEFT_ENABLED = booleanPreferencesKey("swipe_left_enabled")
@@ -118,6 +135,22 @@ class PrefsRepository @Inject constructor(
     val recentAppsCount: Flow<Int> = dataStore.data.map { it[RECENT_APPS_COUNT] ?: 0 }
     val activePanel: Flow<Long> = dataStore.data.map { (it[ACTIVE_PANEL] ?: 0).toLong() }
 
+    /**
+     * Packages pinned to the right-hand column, in display order. Replaces the usage-based
+     * suggestions that used to fill that space, so the column stops reshuffling itself.
+     */
+    val quickApps: Flow<List<String>> = dataStore.data.map { prefs ->
+        (prefs[QUICK_APPS] ?: DEFAULT_QUICK_APPS)
+            .split(SEP)
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .take(QUICK_APPS_MAX)
+    }.distinctUntilChanged()
+
+    suspend fun setQuickApps(packages: List<String>) {
+        dataStore.edit { it[QUICK_APPS] = packages.take(QUICK_APPS_MAX).joinToString(SEP) }
+    }
+
     /** Single snapshot of all home-screen prefs — subscribe once instead of 13×. */
     val homePrefs: Flow<HomePrefs> = dataStore.data.map { p ->
         HomePrefs(
@@ -134,7 +167,7 @@ class PrefsRepository @Inject constructor(
             swipeLeftActivity = p[SWIPE_LEFT_ACTIVITY] ?: "",
             swipeRightActivity = p[SWIPE_RIGHT_ACTIVITY] ?: "",
             halAssistantPackage = p[HAL_ASSISTANT_PACKAGE] ?: "com.google.android.apps.googleassistant",
-            halTapActionRaw = (p[HAL_TAP_ACTION] ?: "ASSISTANT").split(";;").first(),
+            halTapActionRaw = (p[HAL_TAP_ACTION] ?: DEFAULT_HAL_TAP_ACTION).split(";;").first(),
             halLongPressActionRaw = (p[HAL_LONG_PRESS_ACTION] ?: "SETTINGS").split(";;").first(),
             halDoubleTapActionRaw = (p[HAL_DOUBLE_TAP_ACTION] ?: "APP_DRAWER").split(";;").first(),
             reviewNeverAsk = p[REVIEW_NEVER_ASK] ?: false,
@@ -158,7 +191,7 @@ class PrefsRepository @Inject constructor(
     // Global Magic-button config, shared across all panels. Legacy values may still be
     // ";;"-joined per-panel segments from before panels/HAL config were decoupled — take
     // the first segment (the old panel 0's value) as the single global value going forward.
-    val halTapAction: Flow<String> = dataStore.data.map { (it[HAL_TAP_ACTION] ?: "ASSISTANT").split(";;").first() }
+    val halTapAction: Flow<String> = dataStore.data.map { (it[HAL_TAP_ACTION] ?: DEFAULT_HAL_TAP_ACTION).split(";;").first() }
     val halLongPressAction: Flow<String> = dataStore.data.map { (it[HAL_LONG_PRESS_ACTION] ?: "SETTINGS").split(";;").first() }
     val halDoubleTapAction: Flow<String> = dataStore.data.map { (it[HAL_DOUBLE_TAP_ACTION] ?: "APP_DRAWER").split(";;").first() }
 
