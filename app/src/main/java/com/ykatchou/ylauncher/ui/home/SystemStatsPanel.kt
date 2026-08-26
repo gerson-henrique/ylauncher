@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -56,14 +57,18 @@ fun SystemStatsPanel(
             StatRow(label = stringResource(R.string.stat_cpu), value = "$cpu%", fraction = cpu / 100f)
         }
 
-        stats.batteryPercent?.let { pct ->
+        // Load average, not battery. Charge level already lives in the status bar two
+        // centimetres above this, and it is the one reading here that says nothing about what the
+        // open apps are doing.
+        //
+        // Load is not CPU percentage restated: percentage is how busy the cores are, load is how
+        // many processes are queued for them. A core can sit at 100% with nothing waiting, or at
+        // 40% with a queue ten deep — the second is what makes a phone feel slow.
+        stats.loadFraction?.let { fraction ->
             StatRow(
-                label = stringResource(R.string.stat_battery),
-                value = stringResource(R.string.stat_percent, pct),
-                fraction = pct / 100f,
-                // Battery reads the opposite way to the others: a full bar is good here, an
-                // empty one is the problem. Without this a healthy 90% would glow amber.
-                warnWhenLow = true,
+                label = stringResource(R.string.stat_load),
+                value = "%.1f".format(stats.loadAverage) + " / ${stats.cpuCores}",
+                fraction = fraction,
             )
         }
 
@@ -71,6 +76,29 @@ fun SystemStatsPanel(
         // full-bar reference would be a number invented here, and a bar filled against an
         // invented scale reads as a measurement while meaning nothing. The figure itself is
         // real, so it stands alone next to the temperature.
+        // Network and service count carry no bars: bytes per second and a count of services have
+        // no ceiling to measure against, and a bar on an invented scale reads as a measurement.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            if (stats.netRxBytesPerSec != null || stats.netTxBytesPerSec != null) {
+                Text(
+                    text = "↓${stats.netRxBytesPerSec.toRate()}  ↑${stats.netTxBytesPerSec.toRate()}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = HomeTextColor,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
+            stats.foregroundServices?.let { count ->
+                Text(
+                    text = pluralStringResource(R.plurals.stat_services, count, count),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = HomeTextColorDim,
+                )
+            }
+        }
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -145,6 +173,14 @@ private fun StatRow(
 }
 
 private fun Long.toGb(): String = "%.1f".format(this / 1_073_741_824f)
+
+/** Bytes per second at the scale a phone actually moves them. */
+private fun Long?.toRate(): String = when {
+    this == null -> "—"
+    this >= 1_048_576 -> "%.1f MB/s".format(this / 1_048_576f)
+    this >= 1024 -> "${this / 1024} KB/s"
+    else -> "0 KB/s"
+}
 
 private const val HOT_CELSIUS = 42f
 private const val BUSY_FRACTION = 0.85f

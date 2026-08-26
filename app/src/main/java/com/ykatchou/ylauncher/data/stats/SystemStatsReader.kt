@@ -1,6 +1,7 @@
 package com.ykatchou.ylauncher.data.stats
 
 import android.content.Context
+import android.net.TrafficStats
 import android.os.BatteryManager
 import com.ykatchou.ylauncher.data.running.ShizukuShell
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -27,11 +28,15 @@ class SystemStatsReader @Inject constructor(
 
     suspend fun read(): SystemStats {
         val mem = readMemInfo()
+        val netRate = readNetRate()
         return SystemStats(
             memAvailableBytes = mem?.second,
             memTotalBytes = mem?.first,
             cpuPercent = readCpuPercent(),
-            batteryPercent = readBatteryPercent(),
+            loadAverage = readLoadAverage(),
+            netRxBytesPerSec = netRate.first,
+            netTxBytesPerSec = netRate.second,
+            foregroundServices = readForegroundServices(),
             currentMilliAmps = readCurrentMilliAmps(),
             temperatureCelsius = readTemperature(),
         )
@@ -67,10 +72,6 @@ class SystemStatsReader @Inject constructor(
         return CpuStatParser.loadPercent(first, second)
     }
 
-    private fun readBatteryPercent(): Int? = runCatching {
-        batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-            .takeIf { it in 0..100 }
-    }.getOrNull()
 
     /** The property is documented in microamps; negative means draining. */
     private fun readCurrentMilliAmps(): Int? = runCatching {
@@ -85,6 +86,55 @@ class SystemStatsReader @Inject constructor(
             ?.takeIf { it > 0 }
             ?.let { it / 10f }
     }.getOrNull()
+
+    /**
+     * 1-minute load average. `/proc/loadavg` is Permission denied to an ordinary app — verified on
+     * device — so this is Shizuku-only, and absent rather than faked without it.
+     */
+    private fun readLoadAverage(): Float? =
+        ShizukuShell.run("cat /proc/loadavg")
+            ?.trim()
+            ?.split(" ")
+            ?.firstOrNull()
+            ?.toFloatOrNull()
+
+    /**
+     * Apps holding a foreground service. This is the number the running-apps column cannot show:
+     * an app can be absent from the task list and still be working.
+     */
+    private fun readForegroundServices(): Int? =
+        ShizukuShell.run("dumpsys activity services | grep -c isForeground=true")
+            ?.trim()
+            ?.toIntOrNull()
+
+    /**
+     * Throughput since the previous call, as bytes per second. TrafficStats exposes only
+     * cumulative counters, so a rate exists solely as a delta between two reads — the first call
+     * after start has nothing to compare against and reports nothing.
+     */
+    private fun readNetRate(): Pair<Long?, Long?> {
+        val rx = TrafficStats.getTotalRxBytes()
+        val tx = TrafficStats.getTotalTxBytes()
+        val nowMs = System.currentTimeMillis()
+        if (rx == TrafficStats.UNSUPPORTED.toLong()) return null to null
+
+        val prevRx = lastRxBytes
+        val prevTx = lastTxBytes
+        val prevAt = lastNetSampleAt
+        lastRxBytes = rx
+        lastTxBytes = tx
+        lastNetSampleAt = nowMs
+
+        if (prevRx == null || prevTx == null || prevAt == 0L) return null to null
+        val seconds = (nowMs - prevAt) / 1000.0
+        if (seconds <= 0) return null to null
+        return ((rx - prevRx) / seconds).toLong().coerceAtLeast(0) to
+            ((tx - prevTx) / seconds).toLong().coerceAtLeast(0)
+    }
+
+    private var lastRxBytes: Long? = null
+    private var lastTxBytes: Long? = null
+    private var lastNetSampleAt = 0L
 
     private companion object {
         const val CAT_PROC_STAT = "cat /proc/stat"

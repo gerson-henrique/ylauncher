@@ -55,8 +55,12 @@
     <string name="cannot_uninstall_app">Cannot uninstall app</string>
     <string name="cannot_open_launcher_settings">Cannot open launcher settings</string>
     <string name="no_notifications">No notifications</string>
-    <string name="stat_battery">Battery</string>
-    <string name="stat_percent">%1$d%%</string>
     <string name="stat_charging_ma">Charging %1$d mA</string>
     <string name="stat_draw_ma">Draw %1$d mA</string>
+    <string name="stat_load">Load</string>
+    <!-- "1 serviços" was wrong; a count needs real plural rules, not a fixed suffix. -->
+    <plurals name="stat_services">
+        <item quantity="one">%1$d service</item>
+        <item quantity="other">%1$d services</item>
+    </plurals>
 </resources>
