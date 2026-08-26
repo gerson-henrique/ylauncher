@@ -149,7 +149,10 @@ class HomeViewModel @Inject constructor(
         _usageStatsVersion,
         appRepository.appList,
     ) { _, _ ->
-        runningAppsSource.getRunningApps(RUNNING_APPS_LIMIT)
+        // Null means the source could not read; an empty list means nothing is open. Both show
+        // an empty column, but only the second one is the truth — and the adaptive source has
+        // already tried the fallback before returning null here.
+        runningAppsSource.getRunningApps(RUNNING_APPS_LIMIT).orEmpty()
     }.flowOn(Dispatchers.IO)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 

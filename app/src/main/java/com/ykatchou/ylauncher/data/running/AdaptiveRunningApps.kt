@@ -24,16 +24,20 @@ class AdaptiveRunningApps @Inject constructor(
     override val canClose: Boolean
         get() = active.canClose
 
+    /**
+     * Falls back only when the chosen source could not read — never when it read successfully and
+     * found nothing.
+     *
+     * Treating "empty" as "broken" was a real bug: closing every app produces an empty list, which
+     * sent the column to the usage-stats floor, which lists recently-*used* apps — so the moment
+     * the user finished closing everything, the column repopulated with the very apps they had
+     * just killed. Empty is an answer, and here it is the most important one.
+     */
     override suspend fun getRunningApps(limit: Int): List<AppInfo> {
         val chosen = active
-        val apps = chosen.getRunningApps(limit)
-        // A privileged read that comes back empty is more likely a broken binder than an idle
-        // device — fall back rather than showing an empty column.
-        return if (apps.isEmpty() && chosen !== usageStats) {
-            usageStats.getRunningApps(limit)
-        } else {
-            apps
-        }
+        chosen.getRunningApps(limit)?.let { return it }
+        if (chosen !== usageStats) usageStats.getRunningApps(limit)?.let { return it }
+        return emptyList()
     }
 
     override suspend fun close(app: AppInfo): Boolean = active.close(app)

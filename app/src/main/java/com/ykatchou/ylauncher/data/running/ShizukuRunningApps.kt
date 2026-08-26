@@ -20,8 +20,9 @@ class ShizukuRunningApps @Inject constructor(
 
     fun isAvailable(): Boolean = ShizukuShell.isReady()
 
-    override suspend fun getRunningApps(limit: Int): List<AppInfo> {
-        val dump = ShizukuShell.run(DUMP_RECENTS) ?: return emptyList()
+    override suspend fun getRunningApps(limit: Int): List<AppInfo>? {
+        // A failed shell call is null; a successful one listing no tasks is an empty list.
+        val dump = ShizukuShell.run(DUMP_RECENTS) ?: return null
         return RecentTasksParser.packages(dump)
             .mapNotNull { appRepository.findAppByPackage(it) }
             .take(limit)

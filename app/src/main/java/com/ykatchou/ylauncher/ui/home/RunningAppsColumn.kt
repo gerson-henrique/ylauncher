@@ -19,12 +19,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.ykatchou.ylauncher.R
 import com.ykatchou.ylauncher.data.model.AppInfo
 import com.ykatchou.ylauncher.data.model.AppNotification
-import com.ykatchou.ylauncher.ui.theme.HomeTextColorDim
 
 /**
  * The left column: what is open right now. Tapping an entry resumes it, so the column doubles as
@@ -46,17 +44,9 @@ fun RunningAppsColumn(
     onDismissNotification: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    if (apps.isEmpty()) {
-        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(
-                text = stringResource(R.string.nothing_open),
-                style = MaterialTheme.typography.bodyMedium,
-                color = HomeTextColorDim,
-                textAlign = TextAlign.Center,
-            )
-        }
-        return
-    }
+    // Nothing open draws nothing at all. A placeholder would be text asking to be read that
+    // says less than the empty space does, on a home screen whose whole point is quiet.
+    if (apps.isEmpty()) return
 
     Column(modifier = modifier.verticalScroll(rememberScrollState())) {
         apps.forEach { app ->

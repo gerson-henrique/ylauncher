@@ -22,8 +22,10 @@ class UsageStatsRunningApps @Inject constructor(
 
     override val canClose = false
 
-    override suspend fun getRunningApps(limit: Int): List<AppInfo> {
-        if (!UsageStatsHelper.hasPermission(context)) return emptyList()
+    override suspend fun getRunningApps(limit: Int): List<AppInfo>? {
+        // No permission means this source cannot read, which is not the same as nothing
+        // running — say so with null instead of claiming an idle device.
+        if (!UsageStatsHelper.hasPermission(context)) return null
 
         val manager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val now = System.currentTimeMillis()
@@ -33,7 +35,7 @@ class UsageStatsRunningApps @Inject constructor(
             UsageStatsManager.INTERVAL_DAILY,
             now - DAY_MS,
             now,
-        ) ?: return emptyList()
+        ) ?: return null
 
         val cutoff = now - RECENT_WINDOW_MS
         return stats

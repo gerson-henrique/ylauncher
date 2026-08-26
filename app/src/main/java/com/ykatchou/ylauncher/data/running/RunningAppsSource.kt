@@ -15,8 +15,15 @@ interface RunningAppsSource {
     /** Whether [close] does anything. When false the column omits the close affordance entirely. */
     val canClose: Boolean
 
-    /** Apps to show, most recently used first. */
-    suspend fun getRunningApps(limit: Int): List<AppInfo>
+    /**
+     * Apps to show, most recent first, or null when this source could not read at all.
+     *
+     * The distinction matters: an empty list is a real answer meaning nothing is open, and it is
+     * the answer you get precisely when the user has just closed everything. Collapsing it into
+     * "no data" sends the column to a fallback that lists recently-used apps, resurrecting on
+     * screen exactly the apps that were just killed.
+     */
+    suspend fun getRunningApps(limit: Int): List<AppInfo>?
 
     /** Ends [app]. Returns whether it actually died. Always false when [canClose] is false. */
     suspend fun close(app: AppInfo): Boolean
