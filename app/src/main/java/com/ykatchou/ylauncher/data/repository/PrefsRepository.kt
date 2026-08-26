@@ -29,8 +29,8 @@ data class HomePrefs(
     val showNotifBadge: Boolean = true,
     val showDonation: Boolean = true,
     val firstLaunchTimestamp: Long = 0L,
-    val swipeLeftEnabled: Boolean = true,
-    val swipeRightEnabled: Boolean = true,
+    val swipeLeftEnabled: Boolean = false,
+    val swipeRightEnabled: Boolean = false,
     val swipeLeftPackage: String = "",
     val swipeRightPackage: String = "",
     val swipeLeftActivity: String = "",
@@ -111,8 +111,11 @@ class PrefsRepository @Inject constructor(
     val hasSeenOnboardingTour: Flow<Boolean> = dataStore.data.map { it[HAS_SEEN_ONBOARDING_TOUR] ?: false }
     val autoShowKeyboard: Flow<Boolean> = dataStore.data.map { it[AUTO_SHOW_KEYBOARD] ?: true }
     val showClock: Flow<Boolean> = dataStore.data.map { it[SHOW_CLOCK] ?: true }
-    val swipeLeftEnabled: Flow<Boolean> = dataStore.data.map { it[SWIPE_LEFT_ENABLED] ?: true }
-    val swipeRightEnabled: Flow<Boolean> = dataStore.data.map { it[SWIPE_RIGHT_ENABLED] ?: true }
+    // Off by default in this fork: horizontal drags on the home screen are being handed to the
+    // running-apps column (drag to close), so a whole-screen swipe-to-launch would swallow them.
+    // Still switchable back on from settings for anyone who wants the upstream behaviour.
+    val swipeLeftEnabled: Flow<Boolean> = dataStore.data.map { it[SWIPE_LEFT_ENABLED] ?: false }
+    val swipeRightEnabled: Flow<Boolean> = dataStore.data.map { it[SWIPE_RIGHT_ENABLED] ?: false }
     val swipeLeftName: Flow<String> = dataStore.data.map { it[SWIPE_LEFT_NAME] ?: "Camera" }
     val swipeRightName: Flow<String> = dataStore.data.map { it[SWIPE_RIGHT_NAME] ?: "Phone" }
     val swipeLeftPackage: Flow<String> = dataStore.data.map { it[SWIPE_LEFT_PACKAGE] ?: "" }
@@ -160,8 +163,8 @@ class PrefsRepository @Inject constructor(
             showNotifBadge = p[SHOW_NOTIF_BADGE] ?: true,
             showDonation = p[SHOW_DONATION] ?: true,
             firstLaunchTimestamp = p[FIRST_LAUNCH_TIMESTAMP] ?: 0L,
-            swipeLeftEnabled = p[SWIPE_LEFT_ENABLED] ?: true,
-            swipeRightEnabled = p[SWIPE_RIGHT_ENABLED] ?: true,
+            swipeLeftEnabled = p[SWIPE_LEFT_ENABLED] ?: false,
+            swipeRightEnabled = p[SWIPE_RIGHT_ENABLED] ?: false,
             swipeLeftPackage = p[SWIPE_LEFT_PACKAGE] ?: "",
             swipeRightPackage = p[SWIPE_RIGHT_PACKAGE] ?: "",
             swipeLeftActivity = p[SWIPE_LEFT_ACTIVITY] ?: "",
