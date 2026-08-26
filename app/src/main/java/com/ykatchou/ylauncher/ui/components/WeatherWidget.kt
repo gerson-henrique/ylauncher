@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.sp
 import com.ykatchou.ylauncher.data.weather.Weather
 import com.ykatchou.ylauncher.data.weather.WeatherRepository
 import com.ykatchou.ylauncher.ui.theme.HomeTextColor
+import com.ykatchou.ylauncher.ui.theme.WallpaperTextShadow
 import kotlinx.coroutines.delay
 
 /**
@@ -49,10 +50,12 @@ fun WeatherWidget(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Text(text = current.icon, fontSize = 22.sp)
+        // Same type scale as the clock opposite it — displayLarge, same wallpaper shadow — so
+        // the two top corners read as a matched pair rather than one heading and one footnote.
+        Text(text = current.icon, fontSize = 34.sp)
         Text(
             text = "${current.temperatureCelsius}°",
-            style = MaterialTheme.typography.headlineSmall,
+            style = MaterialTheme.typography.displayLarge.copy(shadow = WallpaperTextShadow),
             color = HomeTextColor,
             fontWeight = FontWeight.Light,
         )
