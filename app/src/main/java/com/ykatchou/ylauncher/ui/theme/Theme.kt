@@ -10,9 +10,12 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
+// Mustard is the accent everywhere now, not just on the home meters, so the search field's
+// underline and the magic button's glow match the bars instead of carrying the upstream HAL-9000
+// red. onPrimary flips to a dark ink because mustard is a light colour — white on it is unreadable.
 private val LightColorScheme = lightColorScheme(
-    primary = HalRed,
-    onPrimary = LightBackground,
+    primary = HomeAccent,
+    onPrimary = LightOnBackground,
     background = LightBackground,
     onBackground = LightOnBackground,
     surface = LightSurface,
@@ -22,7 +25,7 @@ private val LightColorScheme = lightColorScheme(
 )
 
 private val DarkColorScheme = darkColorScheme(
-    primary = HalRedBright,
+    primary = HomeAccent,
     onPrimary = DarkBackground,
     background = DarkBackground,
     onBackground = DarkOnBackground,

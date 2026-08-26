@@ -29,6 +29,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import com.ykatchou.ylauncher.ui.theme.HomeAccent
 
 @Composable
 fun HalButton(
@@ -57,7 +58,9 @@ fun HalButton(
         label = "press_scale",
     )
 
-    val glowColor = Color(0xFFFF5500)
+    // Was a hardcoded HAL-9000 orange-red. Uses the shared accent so the glow around the
+    // button belongs to the same palette as the meters and the search underline.
+    val glowColor = HomeAccent
 
     Box(
         modifier = modifier
