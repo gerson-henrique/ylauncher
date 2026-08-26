@@ -1,7 +1,7 @@
 package com.ykatchou.ylauncher.di
 
+import com.ykatchou.ylauncher.data.running.AdaptiveRunningApps
 import com.ykatchou.ylauncher.data.running.RunningAppsSource
-import com.ykatchou.ylauncher.data.running.UsageStatsRunningApps
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -9,9 +9,9 @@ import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
 /**
- * Picks which grade of [RunningAppsSource] the app runs on. Only the usage-stats floor exists
- * today; the privileged source that can also close apps binds here once it lands, and the choice
- * between them belongs in this one place so the rest of the app never branches on it.
+ * Binds the adaptive source, which picks between the privileged and usage-stats grades per call.
+ * Keeping that choice behind one binding means the rest of the app never branches on which one
+ * is live.
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -19,5 +19,5 @@ abstract class RunningAppsModule {
 
     @Binds
     @Singleton
-    abstract fun bindRunningAppsSource(impl: UsageStatsRunningApps): RunningAppsSource
+    abstract fun bindRunningAppsSource(impl: AdaptiveRunningApps): RunningAppsSource
 }

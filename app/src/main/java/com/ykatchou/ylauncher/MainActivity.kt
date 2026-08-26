@@ -18,6 +18,7 @@ import androidx.compose.runtime.getValue
 import com.ykatchou.ylauncher.billing.BillingManager
 import com.ykatchou.ylauncher.data.db.PanelDao
 import com.ykatchou.ylauncher.data.repository.AppRepository
+import com.ykatchou.ylauncher.data.running.ShizukuShell
 import com.ykatchou.ylauncher.data.repository.ConfigBackupRepository
 import com.ykatchou.ylauncher.data.repository.PrefsRepository
 import com.ykatchou.ylauncher.ui.about.AboutScreen
@@ -51,6 +52,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var widgetBindLauncher: ActivityResultLauncher<Intent>
 
     companion object {
+        private const val SHIZUKU_REQUEST_CODE = 4001
+
         private val _homePressed = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
         val homePressed = _homePressed.asSharedFlow()
 
@@ -95,6 +98,7 @@ class MainActivity : ComponentActivity() {
         }
 
         billingManager.initialize()
+        requestShizukuIfAvailable()
         enableEdgeToEdge()
         setContent {
             val fontScale by prefsRepository.textSizeScale.collectAsState(initial = 1f)
@@ -197,6 +201,17 @@ class MainActivity : ComponentActivity() {
             widgetConfigLauncher.launch(configIntent)
         } else {
             saveWidget(widgetId)
+        }
+    }
+
+    /**
+     * Asks Shizuku for permission, which unlocks drag-to-close in the running-apps column.
+     * Only prompts when Shizuku is actually up — with it absent or stopped this is a no-op, and
+     * the column keeps working on usage stats without ever mentioning Shizuku to the user.
+     */
+    private fun requestShizukuIfAvailable() {
+        if (ShizukuShell.needsPermission()) {
+            ShizukuShell.requestPermission(SHIZUKU_REQUEST_CODE)
         }
     }
 

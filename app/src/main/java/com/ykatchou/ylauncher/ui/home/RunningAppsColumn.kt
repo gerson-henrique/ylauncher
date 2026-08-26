@@ -90,18 +90,28 @@ fun RunningAppsColumn(
                     SwipeToDismissBox(
                         state = dismissState,
                         backgroundContent = {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(Color.Red.copy(alpha = 0.25f)),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Text(
-                                    text = "Close",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = Color.White,
-                                    modifier = Modifier.padding(horizontal = 16.dp),
-                                )
+                            // Only while a drag is actually under way. Drawn unconditionally it
+                            // sits behind every row all the time, tinting the column red and
+                            // printing "Close" across the app names.
+                            val direction = dismissState.dismissDirection
+                            if (direction != SwipeToDismissBoxValue.Settled) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(Color.Red.copy(alpha = 0.25f)),
+                                    contentAlignment = if (direction == SwipeToDismissBoxValue.StartToEnd) {
+                                        Alignment.CenterStart
+                                    } else {
+                                        Alignment.CenterEnd
+                                    },
+                                ) {
+                                    Text(
+                                        text = "Close",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = Color.White,
+                                        modifier = Modifier.padding(horizontal = 16.dp),
+                                    )
+                                }
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
