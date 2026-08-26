@@ -1,0 +1,456 @@
+<title>Home em Duas Colunas</title>
+<style>
+  :root {
+    --ground: #f4f2ef;
+    --surface: #ffffff;
+    --surface-2: #edeae5;
+    --ink: #16191b;
+    --muted: #64706d;
+    --line: #ddd8d1;
+    --accent: #b8641c;
+    --accent-soft: #f6e7d6;
+    --danger: #a3423d;
+    --danger-soft: #f7e2e0;
+    --ok: #3f6f4e;
+    --ok-soft: #e0ecdf;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0e1113;
+      --surface: #171b1d;
+      --surface-2: #1e2427;
+      --ink: #e6e9e7;
+      --muted: #8b9794;
+      --line: #272d30;
+      --accent: #e0913f;
+      --accent-soft: #2b2015;
+      --danger: #d8746d;
+      --danger-soft: #2e1a19;
+      --ok: #7fae8b;
+      --ok-soft: #1a2620;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0e1113;
+    --surface: #171b1d;
+    --surface-2: #1e2427;
+    --ink: #e6e9e7;
+    --muted: #8b9794;
+    --line: #272d30;
+    --accent: #e0913f;
+    --accent-soft: #2b2015;
+    --danger: #d8746d;
+    --danger-soft: #2e1a19;
+    --ok: #7fae8b;
+    --ok-soft: #1a2620;
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.6;
+    margin: 0;
+    padding: 0 1.25rem 6rem;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 74ch; margin: 0 auto; }
+  .wide { max-width: 96ch; margin: 0 auto; }
+
+  header { padding: 4.5rem 0 2.5rem; border-bottom: 1px solid var(--line); margin-bottom: 3rem; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 1rem;
+  }
+  h1 {
+    font-size: clamp(2rem, 5vw, 2.9rem);
+    line-height: 1.08;
+    letter-spacing: -0.025em;
+    font-weight: 660;
+    margin: 0 0 1rem;
+    text-wrap: balance;
+  }
+  .lede { font-size: 1.1rem; color: var(--muted); margin: 0; max-width: 62ch; }
+  .meta {
+    display: flex; flex-wrap: wrap; gap: 1.5rem;
+    margin-top: 2rem; font-family: var(--mono); font-size: 0.78rem; color: var(--muted);
+  }
+  .meta b { color: var(--ink); font-weight: 500; }
+
+  h2 {
+    font-size: 1.5rem; letter-spacing: -0.015em; font-weight: 640;
+    margin: 3.5rem 0 0.5rem; text-wrap: balance;
+  }
+  h2 + .sub { color: var(--muted); margin: 0 0 1.5rem; }
+  h3 { font-size: 1.05rem; font-weight: 620; margin: 2rem 0 0.5rem; letter-spacing: -0.01em; }
+  p { margin: 0 0 1rem; }
+  a { color: var(--accent); }
+
+  code {
+    font-family: var(--mono); font-size: 0.86em;
+    background: var(--surface-2); padding: 0.12em 0.38em;
+    border-radius: 3px; border: 1px solid var(--line);
+  }
+
+  .ask {
+    display: grid; grid-template-columns: auto 1fr; gap: 0 1.1rem;
+    padding: 1.15rem 0; border-bottom: 1px solid var(--line);
+  }
+  .ask:first-of-type { border-top: 1px solid var(--line); }
+  .ask-n {
+    font-family: var(--mono); font-size: 0.8rem; color: var(--accent);
+    padding-top: 0.22rem;
+  }
+  .ask-t { font-weight: 600; }
+  .ask-d { color: var(--muted); font-size: 0.94rem; grid-column: 2; }
+  .tag {
+    display: inline-block; font-family: var(--mono); font-size: 0.68rem;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 0.14em 0.5em; border-radius: 3px; vertical-align: 0.12em;
+    margin-left: 0.5rem; border: 1px solid transparent;
+  }
+  .tag.zero { background: var(--ok-soft); color: var(--ok); border-color: var(--ok); }
+  .tag.hard { background: var(--danger-soft); color: var(--danger); border-color: var(--danger); }
+  .tag.mid  { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+
+  figure { margin: 2rem 0 2.5rem; }
+  figure svg { display: block; width: 100%; height: auto; }
+  figcaption {
+    font-size: 0.85rem; color: var(--muted); margin-top: 0.9rem;
+    text-align: center; font-family: var(--mono);
+  }
+  .scroller { overflow-x: auto; }
+
+  .call {
+    border-left: 2px solid var(--accent);
+    background: var(--surface);
+    padding: 1.2rem 1.4rem; margin: 1.75rem 0;
+    border-radius: 0 4px 4px 0;
+  }
+  .call .k {
+    font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 0.5rem;
+  }
+  .call p:last-child { margin-bottom: 0; }
+
+  .opts { display: grid; gap: 1rem; margin: 1.5rem 0; }
+  .opt {
+    border: 1px solid var(--line); border-radius: 5px;
+    background: var(--surface); padding: 1.1rem 1.3rem;
+  }
+  .opt.pick { border-color: var(--accent); border-width: 1.5px; }
+  .opt-h { display: flex; align-items: baseline; gap: 0.7rem; flex-wrap: wrap; margin-bottom: 0.4rem; }
+  .opt-h b { font-size: 1rem; font-weight: 620; }
+  .opt-h .v {
+    font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .opt.pick .opt-h .v { color: var(--accent); }
+  .opt p { margin: 0 0 0.5rem; font-size: 0.94rem; }
+  .opt p:last-child { margin-bottom: 0; }
+  .yn { font-family: var(--mono); font-size: 0.82rem; }
+  .yn .y { color: var(--ok); }
+  .yn .n { color: var(--danger); }
+
+  .phase {
+    display: grid; grid-template-columns: 5.5rem 1fr; gap: 0 1.2rem;
+    padding: 1.1rem 0; border-top: 1px solid var(--line);
+  }
+  .phase:last-of-type { border-bottom: 1px solid var(--line); }
+  .phase-k {
+    font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--accent); padding-top: 0.25rem;
+  }
+  .phase b { font-weight: 620; display: block; margin-bottom: 0.25rem; }
+  .phase p { margin: 0; color: var(--muted); font-size: 0.94rem; }
+  .files { font-family: var(--mono); font-size: 0.78rem; color: var(--muted); margin-top: 0.5rem; }
+
+  .rank { display: grid; gap: 0.5rem; margin: 1.5rem 0; }
+  .rk {
+    display: grid; grid-template-columns: 3rem 1fr; align-items: center;
+    gap: 0 0.9rem; position: relative; padding: 0.3rem 0;
+  }
+  .rk-n {
+    font-family: var(--mono); font-size: 0.82rem; text-align: right;
+    color: var(--ink); font-variant-numeric: tabular-nums;
+  }
+  .rk-p { font-size: 0.94rem; }
+  .rk-p em { color: var(--muted); font-style: normal; font-size: 0.86rem; }
+  .rk-b {
+    grid-column: 2; height: 3px; background: var(--accent);
+    border-radius: 2px; margin-top: 0.25rem;
+  }
+  .rk.out .rk-n, .rk.out .rk-p { color: var(--muted); }
+  .rk.out .rk-b { background: var(--line); }
+  .cav { font-size: 0.86rem; color: var(--muted); }
+
+  ul { padding-left: 1.15rem; margin: 0 0 1rem; }
+  li { margin-bottom: 0.4rem; }
+
+  footer {
+    margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--line);
+    font-family: var(--mono); font-size: 0.76rem; color: var(--muted);
+  }
+</style>
+
+<div class="wrap">
+<header>
+  <p class="eyebrow">Fork · yLauncher</p>
+  <h1>Home em Duas Colunas</h1>
+  <p class="lede">A esquerda deixa de ser atalho e vira controle: os apps abertos, para alternar e fechar. A direita deixa de adivinhar e passa a obedecer: quatro apps fixos, escolhidos por você.</p>
+  <div class="meta">
+    <span><b>Base</b> ykatchou/ylauncher v1.8.3</span>
+    <span><b>Aparelho</b> BV9300 Pro · Android 15</span>
+    <span><b>Data</b> 26 ago 2026</span>
+  </div>
+</header>
+
+<h2>O que você pediu</h2>
+<p class="sub">Três mudanças, com custos de implementação muito diferentes entre si.</p>
+
+<div class="ask">
+  <span class="ask-n">01</span>
+  <span class="ask-t">Coluna esquerda: apps abertos<span class="tag hard">parede da API</span></span>
+  <span class="ask-d">Hoje são favoritos estáticos com nome. Devem virar os apps em execução: toque alterna, arrastar para o lado fecha.</span>
+</div>
+<div class="ask">
+  <span class="ask-n">02</span>
+  <span class="ask-t">Coluna direita: 4 apps fixos<span class="tag mid">reaproveita o que existe</span></span>
+  <span class="ask-d">Hoje é sugestão automática por uso. Devem ser WhatsApp, Instagram, Mercado Pago e um quarto a definir.</span>
+</div>
+<div class="ask">
+  <span class="ask-n">03</span>
+  <span class="ask-t">Botão do meio abre o Chrome<span class="tag zero">zero código</span></span>
+  <span class="ask-d">Já existe a ação <code>CUSTOM_APP</code>. É configuração nos ajustes do launcher, não programação.</span>
+</div>
+
+<div class="call">
+  <p class="k">Descoberta durante o levantamento</p>
+  <p>Aqueles Instagram, WhatsApp e Facebook que aparecem hoje à direita <b>não foram configurados por você</b>. São sugestões geradas pelo <code>UsageStatsHelper</code> a partir dos seus apps mais usados — o launcher acertou por coincidência. É por isso que a lista muda sozinha.</p>
+</div>
+</div>
+
+<div class="wide">
+<figure>
+  <div class="scroller">
+  <svg viewBox="0 0 860 430" role="img" aria-label="Comparação entre a home atual e a home proposta, lado a lado">
+    <defs>
+      <style>
+        .ph { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; }
+        .lbl { font-family: var(--mono); font-size: 11px; fill: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+        .ttl { font-family: system-ui, sans-serif; font-size: 14px; font-weight: 640; fill: var(--ink); }
+        .it { font-family: system-ui, sans-serif; font-size: 11.5px; fill: var(--ink); }
+        .itm { font-family: system-ui, sans-serif; font-size: 11.5px; fill: var(--muted); }
+        .ic { fill: var(--surface-2); stroke: var(--line); stroke-width: 1; }
+        .ica { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1; }
+        .zone { fill: none; stroke-width: 1.5; stroke-dasharray: 4 3; }
+        .note { font-family: var(--mono); font-size: 10px; fill: var(--muted); }
+        .xk { font-family: var(--mono); font-size: 11px; fill: var(--danger); font-weight: 700; }
+      </style>
+    </defs>
+
+    <!-- ANTES -->
+    <text class="lbl" x="20" y="20">Hoje</text>
+    <rect class="ph" x="20" y="32" width="340" height="380" rx="16"/>
+    <text class="ttl" x="42" y="66">11:33</text>
+    <text class="itm" x="42" y="82" font-size="10">quarta-feira, 26 agosto</text>
+
+    <rect class="zone" x="34" y="100" width="180" height="200" rx="6" stroke="var(--muted)"/>
+    <text class="note" x="40" y="115">favoritos · fixos</text>
+    <rect class="ic" x="42" y="126" width="24" height="24" rx="6"/><text class="it" x="74" y="143">Messages</text>
+    <rect class="ic" x="42" y="160" width="24" height="24" rx="6"/><text class="it" x="74" y="177">Phone</text>
+    <rect class="ic" x="42" y="194" width="24" height="24" rx="6"/><text class="it" x="74" y="211">Camera</text>
+    <rect class="ic" x="42" y="228" width="24" height="24" rx="6"/><text class="it" x="74" y="245">Browser</text>
+    <rect class="ic" x="42" y="262" width="24" height="24" rx="6"/><text class="it" x="74" y="279">YouTube</text>
+
+    <rect class="zone" x="240" y="100" width="102" height="200" rx="6" stroke="var(--muted)"/>
+    <text class="note" x="246" y="115">sugestões</text>
+    <text class="note" x="246" y="127" fill="var(--danger)">automáticas</text>
+    <rect class="ic" x="292" y="140" width="26" height="26" rx="7"/>
+    <rect class="ic" x="292" y="176" width="26" height="26" rx="7"/>
+    <rect class="ic" x="292" y="212" width="26" height="26" rx="7"/>
+
+    <circle class="ic" cx="190" cy="372" r="20"/>
+    <text class="note" x="168" y="404">Google</text>
+
+    <!-- seta -->
+    <path d="M385 220 L455 220" stroke="var(--accent)" stroke-width="1.5" fill="none"/>
+    <path d="M448 214 L456 220 L448 226" stroke="var(--accent)" stroke-width="1.5" fill="none"/>
+
+    <!-- DEPOIS -->
+    <text class="lbl" x="500" y="20" fill="var(--accent)">Proposta</text>
+    <rect class="ph" x="500" y="32" width="340" height="380" rx="16"/>
+    <text class="ttl" x="522" y="66">11:33</text>
+    <text class="itm" x="522" y="82" font-size="10">quarta-feira, 26 agosto</text>
+
+    <rect class="zone" x="514" y="100" width="190" height="200" rx="6" stroke="var(--accent)"/>
+    <text class="note" x="520" y="115" fill="var(--accent)">apps abertos · vivo</text>
+    <rect class="ica" x="522" y="126" width="24" height="24" rx="6"/><text class="it" x="554" y="143">WhatsApp</text>
+    <rect class="ica" x="522" y="160" width="24" height="24" rx="6"/><text class="it" x="554" y="177">YouTube</text>
+    <!-- item no meio de um arrasto: deslocado, com rastro -->
+    <g opacity="0.55">
+      <rect class="ica" x="560" y="194" width="24" height="24" rx="6"/><text class="it" x="592" y="211">Chrome</text>
+    </g>
+    <path d="M552 206 L524 206" stroke="var(--danger)" stroke-width="1.5" fill="none"/>
+    <path d="M531 200 L523 206 L531 212" stroke="var(--danger)" stroke-width="1.5" fill="none"/>
+    <rect class="ica" x="522" y="228" width="24" height="24" rx="6"/><text class="it" x="554" y="245">Jira</text>
+    <text class="note" x="522" y="278">toque alterna · arrasta fecha</text>
+
+    <rect class="zone" x="726" y="100" width="100" height="200" rx="6" stroke="var(--accent)"/>
+    <text class="note" x="732" y="115" fill="var(--accent)">4 fixos</text>
+    <rect class="ica" x="770" y="132" width="26" height="26" rx="7"/>
+    <rect class="ica" x="770" y="168" width="26" height="26" rx="7"/>
+    <rect class="ica" x="770" y="204" width="26" height="26" rx="7"/>
+    <rect class="ica" x="770" y="240" width="26" height="26" rx="7"/>
+
+    <circle class="ica" cx="670" cy="372" r="20"/>
+    <text class="note" x="650" y="404" fill="var(--accent)">Chrome</text>
+  </svg>
+  </div>
+  <figcaption>A esquerda troca de natureza: de lista fixa para estado vivo do aparelho.</figcaption>
+</figure>
+</div>
+
+<div class="wrap">
+<h2>A parede: o Android não deixa</h2>
+<p class="sub">Esta é a decisão que define o projeto, então vale ser franco sobre o obstáculo.</p>
+
+<p>Listar apps em execução e fechá-los <b>não é possível para um app comum</b> no Android moderno. As portas foram fechadas de propósito: <code>getRunningTasks()</code> só devolve as tarefas do próprio app desde o Android 5, <code>getRecentTasks()</code> foi restrito na mesma leva, e não existe API pública para encerrar outro aplicativo. O <code>killBackgroundProcesses()</code> que sobrou não fecha nada de verdade — o sistema recria o processo em seguida.</p>
+
+<p>Quem consegue fazer isso é o QuickStep, e ele consegue porque roda com assinatura de sistema. É o mesmo componente que a gente descobriu hoje morando dentro do launcher da Blackview.</p>
+
+<div class="call">
+  <p class="k">O que salva o projeto — verificado no aparelho</p>
+  <p>Você já tem <b>Shizuku 13.6 rodando com uid <code>shell</code></b>: privilégio de shell sem root. O spike confirmou que o <code>com.android.shell</code>, que é o que o Shizuku empresta, carrega <b>todas</b> as permissões necessárias, todas concedidas:</p>
+  <p class="yn" style="margin-top:0.7rem"><span class="y">✓</span> <code>REAL_GET_TASKS</code> &nbsp; <span class="y">✓</span> <code>REMOVE_TASKS</code> &nbsp; <span class="y">✓</span> <code>FORCE_STOP_PACKAGES</code> &nbsp; <span class="y">✓</span> <code>MANAGE_ACTIVITY_TASKS</code></p>
+</div>
+
+<h3>O que o spike ensinou</h3>
+<p>Listar tarefas reais funciona, e vem com o tipo junto — <code>type=home</code>, <code>type=recents</code>, <code>type=standard</code> — o que dá o filtro de graça: só <code>standard</code> é app de verdade. Sem isso, a própria home e o QuickStep apareceriam na lista.</p>
+
+<div class="call">
+  <p class="k">Achado que muda a implementação</p>
+  <p>Encerrar um app <b>não é uma operação, são duas</b>. O teste com o Facebook derrubou os quatro processos, mas a tarefa <b>continuou na lista de recentes</b> — o app fechado seguiria aparecendo na coluna. Fechar de verdade é <code>forceStopPackage()</code> <b>e</b> <code>removeTask()</code>, nessa ordem. Um sem o outro dá comportamento errado: só o primeiro deixa fantasma na lista, só o segundo esconde um app que continua vivo.</p>
+</div>
+
+<h3>Três caminhos</h3>
+<div class="opts">
+  <div class="opt">
+    <div class="opt-h"><b>Só UsageStats</b> <span class="v">sem dependência</span></div>
+    <p>Usa o que o launcher já tem e a permissão que já está concedida. Lista os apps <em>usados recentemente</em> — que não é a mesma coisa que <em>abertos agora</em>.</p>
+    <p class="yn"><span class="y">✓ alternar</span> · <span class="n">✗ fechar</span> · <span class="n">✗ saber o que está de fato aberto</span></p>
+  </div>
+  <div class="opt">
+    <div class="opt-h"><b>Só Shizuku</b> <span class="v">tudo ou nada</span></div>
+    <p>Lista de tarefas real e fechamento de verdade. Mas o launcher — a peça mais crítica do aparelho — passa a depender de um serviço que <b>morre a cada reboot</b> e precisa ser reativado por depuração sem fio.</p>
+    <p class="yn"><span class="y">✓ alternar</span> · <span class="y">✓ fechar</span> · <span class="n">✗ home quebrada até você reativar o Shizuku</span></p>
+  </div>
+  <div class="opt pick">
+    <div class="opt-h"><b>Híbrido, com degradação</b> <span class="v">recomendado</span></div>
+    <p>UsageStats é o piso: a coluna sempre lista e sempre alterna, mesmo sem Shizuku. Quando o Shizuku está no ar, a coluna troca para tarefas reais e o <code>×</code> de fechar aparece. Sem ele, o <code>×</code> some e o resto continua funcionando.</p>
+    <p class="yn"><span class="y">✓ nunca deixa a home inutilizável</span> · <span class="y">✓ ganha poder quando disponível</span></p>
+  </div>
+</div>
+
+<p>A razão de recomendar o híbrido não é técnica, é de risco: um launcher é a peça que você não pode perder. Se ele depender de um serviço que não sobrevive ao reboot, um dia você reinicia o celular no meio da rua e fica sem home.</p>
+
+<h2>Arrastar para fechar</h2>
+<p class="sub">O gesto certo, mas ele colide com um gesto que já existe — e o autor já resolveu essa colisão uma vez.</p>
+
+<p>Arrastar é melhor que um <code>×</code> por três razões: é o gesto que o próprio Recents do Android usa, então não precisa ser aprendido; não rouba espaço na linha, que num item estreito com nome de app é escasso; e é muito mais difícil de disparar por acidente do que um alvo pequeno de toque.</p>
+
+<p>O problema é que a home <b>já usa arrastar para os lados</b> como gesto global: para a esquerda abre a Câmera, para a direita abre o Telefone (<code>HomeScreen.kt:292-312</code>). Um arrasto em cima de um app aberto dispararia a Câmera em vez de fechar o app.</p>
+
+<div class="call">
+  <p class="k">A casa já tem a solução</p>
+  <p>O balão de notificações do launcher já faz swipe-to-dismiss e já convive com esse gesto global. A técnica está no código com comentário do autor: o componente registra seus próprios limites em <code>notifBubbleBounds</code>, e o detector global desiste quando o toque nasce dentro deles. O mesmo vale para o seletor de painéis, em <code>panelSwitcherBounds</code>.</p>
+  <p>A coluna de apps abertos vira o <b>terceiro caso do mesmo padrão</b>. Não é gambiarra para contornar o desenho existente — é o idioma que o projeto já usa duas vezes.</p>
+</div>
+
+<p>Na implementação isso significa um <code>SwipeToDismissBox</code> por item, e a coluna publicando seus limites para o detector global — o mesmo três-linhas que hoje protege o balão de notificações.</p>
+
+<h2>Modelo de dados</h2>
+<p class="sub">A boa notícia: metade já está construída.</p>
+
+<p>A coluna da direita não precisa de estrutura nova. O launcher já tem a tabela <code>favorite_apps</code> com painéis, ordenação e telas de edição prontas. A mudança é de <em>fonte</em>: onde hoje ela lê <code>suggestedApps</code>/<code>recentApps</code>, passa a ler favoritos de um painel dedicado, limitado a quatro e renderizado só com ícone.</p>
+
+<p>A coluna da esquerda é a que ganha código novo: uma interface <code>RunningAppsSource</code> com duas implementações — a de UsageStats e a de Shizuku — e a tela escolhendo qual usar conforme a disponibilidade. Manter isso atrás de uma interface é o que permite a degradação sem espalhar <code>if</code> pela UI.</p>
+
+<div class="call">
+  <p class="k">Atenção herdada do autor</p>
+  <p><code>favorite_apps.panelId</code> é uma foreign key real. O <code>CLAUDE.md</code> do repositório é explícito: escrever só pelos wrappers transacionais do <code>FavoriteDao</code>, nunca pelos métodos crus do Room — gravar contra um painel inexistente derruba o launcher com <code>SQLITE_CONSTRAINT_FOREIGNKEY</code>.</p>
+</div>
+
+<h2>Plano de execução</h2>
+<p class="sub">Ordenado por risco: o que é barato e certo primeiro, o incerto isolado num teste antes de virar compromisso.</p>
+
+<div class="phase">
+  <span class="phase-k">Fase 0</span>
+  <div>
+    <b>Chrome no botão do meio</b>
+    <p>Sem escrever uma linha. Ajustes → magic button → "Open app…" → Chrome. Serve de sanity check de que a configuração persiste.</p>
+  </div>
+</div>
+<div class="phase">
+  <span class="phase-k">Fase 1</span>
+  <div>
+    <b>Coluna direita fixa</b>
+    <p>Trocar a fonte de sugestões por um painel de favoritos de quatro posições. Mudança contida, sem API arriscada, e já entrega um terço do pedido.</p>
+    <p class="files">HomeScreen.kt:503 · HomeViewModel.kt · FavoriteDao</p>
+  </div>
+</div>
+<div class="phase">
+  <span class="phase-k">Fase 2 ✓</span>
+  <div>
+    <b>Spike: o Shizuku aguenta? — <span style="color:var(--ok)">sim</span></b>
+    <p>Concluído em 26/08. Tarefas reais listadas com sucesso, <code>force-stop</code> derrubou o pacote-cobaia por completo, e as quatro permissões necessárias estão concedidas ao shell. A fase 3 está liberada — com o ajuste de que fechar exige duas chamadas, não uma.</p>
+  </div>
+</div>
+<div class="phase">
+  <span class="phase-k">Fase 3</span>
+  <div>
+    <b>Coluna esquerda viva</b>
+    <p>A interface <code>RunningAppsSource</code>, as duas implementações, e a UI com toque para alternar e arrastar para fechar — o arrasto habilitado apenas quando a fonte suporta encerrar. Inclui registrar os limites da coluna para não brigar com o gesto de Câmera/Telefone.</p>
+    <p class="files">novo: data/running/ · HomeScreen.kt:389 · bounds em HomeScreen.kt:238</p>
+  </div>
+</div>
+
+<h2>O quarto app</h2>
+<p class="sub">O aparelho respondeu. E a resposta tem uma ironia.</p>
+
+<p>Contando quantas vezes cada app foi trazido para a frente no histórico do sistema, os três que você escolheu de cabeça são <b>exatamente o pódio</b>: WhatsApp (136), Mercado Pago (92), Instagram (91). Sua intuição bateu com o dado.</p>
+
+<div class="rank">
+  <div class="rk"><span class="rk-n">136</span><span class="rk-p">WhatsApp</span><span class="rk-b" style="width:100%"></span></div>
+  <div class="rk"><span class="rk-n">92</span><span class="rk-p">Mercado Pago</span><span class="rk-b" style="width:68%"></span></div>
+  <div class="rk"><span class="rk-n">91</span><span class="rk-p">Instagram</span><span class="rk-b" style="width:67%"></span></div>
+  <div class="rk out"><span class="rk-n">42</span><span class="rk-p">Chrome <em>— já vai para o botão do meio</em></span><span class="rk-b" style="width:31%"></span></div>
+  <div class="rk"><span class="rk-n">18</span><span class="rk-p">DuckDuckGo</span><span class="rk-b" style="width:13%"></span></div>
+  <div class="rk"><span class="rk-n">16</span><span class="rk-p">Mercado Libre (nightly)</span><span class="rk-b" style="width:12%"></span></div>
+  <div class="rk"><span class="rk-n">14</span><span class="rk-p">Spotify</span><span class="rk-b" style="width:10%"></span></div>
+</div>
+
+<p>A ironia: o quarto colocado é o <b>Chrome</b> — que já vai ocupar o botão do meio. Colocá-lo também na coluna seria gastar um dos quatro slots em duplicata.</p>
+
+<p>Descartado o Chrome, e descartando também o DuckDuckGo por ser mais navegador (mesma função, mesmo dedo), sobram dois candidatos com pesos parecidos e naturezas opostas: <b>Mercado Libre nightly</b>, que é trabalho, ou <b>Spotify</b>, que é lazer. O dado não decide isso por você — é uma escolha sobre o que você quer a um toque na tela inicial.</p>
+
+<p class="cav">Ressalva sobre o número: é contagem de eventos no buffer atual do sistema, não histórico de vida inteira. Serve para ordenar, não como métrica absoluta.</p>
+
+<h2>Riscos anotados</h2>
+<ul>
+  <li><b>Shizuku morre no reboot.</b> É o motivo do desenho híbrido. Vale medir quanto isso incomoda na prática antes de considerar alternativas mais invasivas.</li>
+  <li><b>Fechar app é destrutivo e não tem desfazer.</b> Um <code>force-stop</code> descarta estado não salvo, e diferente de remover da lista de recentes, não dá para reverter — o processo já morreu. Por isso o arrasto precisa de um limiar de distância folgado: melhor exigir um gesto decidido do que fechar o WhatsApp no meio de uma mensagem.</li>
+  <li><b>Perfil de trabalho.</b> O aparelho tem um perfil gerenciado pelo CloudDPC. Apps de lá podem aparecer nas listas — decidir se entram ou são filtrados.</li>
+  <li><b>Divergência do upstream.</b> O autor segue publicando (último commit foi ontem). Quanto mais a home mudar, mais caro fica trazer as novidades dele. Vale manter as mudanças em arquivos próprios sempre que der.</li>
+</ul>
+
+<footer>
+  Documento de arquitetura · gerson-henrique/ylauncher · escrito antes da implementação, para revisão.
+</footer>
+</div>
