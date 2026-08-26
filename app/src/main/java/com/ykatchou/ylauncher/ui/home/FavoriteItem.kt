@@ -28,6 +28,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,6 +38,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ykatchou.ylauncher.R
 import com.ykatchou.ylauncher.data.model.AppInfo
 import com.ykatchou.ylauncher.util.AppIconCache
 import com.ykatchou.ylauncher.data.model.AppNotification
@@ -217,37 +219,37 @@ fun FavoriteItem(
         ) {
             if (isFolder && onEditFolder != null) {
                 DropdownMenuItem(
-                    text = { Text("Edit folder") },
+                    text = { Text(stringResource(R.string.edit_folder)) },
                     onClick = { showMenu = false; onEditFolder() },
                 )
             }
             if (!isFolder && onMoveToFolder != null) {
                 DropdownMenuItem(
-                    text = { Text("Move to folder") },
+                    text = { Text(stringResource(R.string.move_to_folder)) },
                     onClick = { showMenu = false; onMoveToFolder() },
                 )
             }
             if (onMoveToPanel != null) {
                 DropdownMenuItem(
-                    text = { Text("Move to panel…") },
+                    text = { Text(stringResource(R.string.move_to_panel)) },
                     onClick = { showMenu = false; onMoveToPanel() },
                 )
             }
             if (onEditFavorites != null) {
                 DropdownMenuItem(
-                    text = { Text("Edit favorites") },
+                    text = { Text(stringResource(R.string.edit_favorites)) },
                     onClick = { showMenu = false; onEditFavorites() },
                 )
             }
             if (!isFolder && onAppInfo != null) {
                 DropdownMenuItem(
-                    text = { Text("App info") },
+                    text = { Text(stringResource(R.string.app_info)) },
                     onClick = { showMenu = false; onAppInfo() },
                 )
             }
             if (!isFolder && onUninstall != null) {
                 DropdownMenuItem(
-                    text = { Text("Uninstall") },
+                    text = { Text(stringResource(R.string.uninstall)) },
                     onClick = { showMenu = false; onUninstall() },
                 )
             }

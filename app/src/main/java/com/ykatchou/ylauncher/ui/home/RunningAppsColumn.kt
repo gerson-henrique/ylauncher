@@ -15,11 +15,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.ykatchou.ylauncher.R
 import com.ykatchou.ylauncher.data.model.AppInfo
 import com.ykatchou.ylauncher.data.model.AppNotification
 import com.ykatchou.ylauncher.ui.theme.HomeTextColorDim
@@ -47,7 +49,7 @@ fun RunningAppsColumn(
     if (apps.isEmpty()) {
         Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(
-                text = "Nothing open",
+                text = stringResource(R.string.nothing_open),
                 style = MaterialTheme.typography.bodyMedium,
                 color = HomeTextColorDim,
                 textAlign = TextAlign.Center,
@@ -106,7 +108,7 @@ fun RunningAppsColumn(
                                     },
                                 ) {
                                     Text(
-                                        text = "Close",
+                                        text = stringResource(R.string.close),
                                         style = MaterialTheme.typography.labelLarge,
                                         color = Color.White,
                                         modifier = Modifier.padding(horizontal = 16.dp),

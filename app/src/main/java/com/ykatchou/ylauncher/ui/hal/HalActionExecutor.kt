@@ -1,5 +1,6 @@
 package com.ykatchou.ylauncher.ui.hal
 
+import com.ykatchou.ylauncher.R
 import android.app.WallpaperManager
 import android.content.Context
 import android.content.Intent
@@ -30,7 +31,7 @@ object HalActionExecutor {
                 if (assistantPackage.isNotBlank() && AppLauncher.launch(context, assistantPackage)) return
                 val intent = Intent(Intent.ACTION_VOICE_COMMAND).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 try { context.startActivity(intent) } catch (_: Exception) {
-                    context.showToast("No assistant found")
+                    context.showToast(context.getString(R.string.no_assistant))
                 }
             }
             HalAction.NOTIFICATIONS -> context.expandNotificationDrawer()
@@ -50,7 +51,7 @@ object HalActionExecutor {
                                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         )
                     } catch (_: Exception) {
-                        context.showToast("No wallpaper picker found")
+                        context.showToast(context.getString(R.string.no_wallpaper_picker))
                     }
                 }
             }
@@ -58,7 +59,7 @@ object HalActionExecutor {
                 val decoded = HalAction.decodeApp(actionKey)
                 if (decoded != null) {
                     val launched = AppLauncher.launch(context, decoded.first, decoded.second)
-                    if (!launched) context.showToast("App not found")
+                    if (!launched) context.showToast(context.getString(R.string.app_not_found))
                 }
             }
         }

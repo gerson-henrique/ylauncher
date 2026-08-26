@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tela inicial: menu de toque longo -->
+    <string name="add_app">Adicionar app</string>
+    <string name="add_folder">Adicionar pasta</string>
+    <string name="add_widget">Adicionar widget</string>
+    <string name="edit_favorites">Editar favoritos</string>
+    <string name="reimport_favorites">Reimportar favoritos</string>
+    <string name="remove_all_widgets">Remover todos os widgets</string>
+    <string name="change_wallpaper">Trocar papel de parede</string>
+    <string name="settings">Ajustes</string>
+    <string name="about">Sobre</string>
+
+    <!-- Tela inicial: diálogos -->
+    <string name="remove_all_widgets_title">Remover todos os widgets?</string>
+    <string name="remove_all_widgets_body">Isso tira todos os widgets da sua tela inicial. Você pode adicioná-los de volta quando quiser.</string>
+    <string name="remove">Remover</string>
+    <string name="cancel">Cancelar</string>
+    <string name="usage_access_title">Mostrar seus apps recomendados?</string>
+    <string name="usage_access_body">O yLauncher pode mostrar na tela inicial os apps que você mais usa, mas precisa da permissão de Acesso ao uso para saber quais são.</string>
+    <string name="continue_action">Continuar</string>
+    <string name="not_now">Agora não</string>
+
+    <!-- Tela inicial: coluna de apps abertos -->
+    <string name="nothing_open">Nada aberto</string>
+    <string name="close">Fechar</string>
+
+    <!-- Tela inicial: painel de status -->
+    <string name="stat_ram">RAM</string>
+    <string name="stat_cpu">CPU</string>
+    <string name="stat_charging">Carregando</string>
+    <string name="stat_draw">Consumo</string>
+    <string name="stat_ram_free">%1$s GB livres</string>
+    <string name="stat_milliamps">%1$d mA</string>
+    <string name="stat_battery_level">Bateria %1$d%%</string>
+    <string name="stat_celsius">%1$s°C</string>
+
+    <!-- Menus de contexto -->
+    <string name="edit_folder">Editar pasta</string>
+    <string name="move_to_folder">Mover para pasta</string>
+    <string name="move_to_panel">Mover para painel…</string>
+    <string name="app_info">Informações do app</string>
+    <string name="uninstall">Desinstalar</string>
+    <string name="add_to_home">Adicionar à tela inicial</string>
+    <string name="hide">Ocultar</string>
+
+    <!-- Gaveta de apps -->
+    <string name="launching">Abrindo %1$s…</string>
+
+    <!-- Erros -->
+    <string name="app_not_found">App não encontrado</string>
+    <string name="no_dialer_app">Nenhum app de telefone encontrado</string>
+    <string name="no_camera_app">Nenhum app de câmera encontrado</string>
+    <string name="no_browser">Nenhum navegador encontrado</string>
+    <string name="no_wallpaper_picker">Nenhum seletor de papel de parede encontrado</string>
+    <string name="no_assistant">Nenhum assistente encontrado</string>
+    <string name="cannot_open_app_info">Não foi possível abrir as informações do app</string>
+    <string name="cannot_uninstall_app">Não foi possível desinstalar o app</string>
+    <string name="cannot_open_launcher_settings">Não foi possível abrir os ajustes do launcher</string>
+    <string name="no_notifications">Sem notificações</string>
+</resources>

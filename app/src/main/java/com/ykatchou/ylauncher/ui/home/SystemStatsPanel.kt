@@ -15,9 +15,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.ykatchou.ylauncher.R
 import com.ykatchou.ylauncher.data.stats.SystemStats
 import com.ykatchou.ylauncher.ui.theme.HomeTextColor
 import com.ykatchou.ylauncher.ui.theme.HomeTextColorDim
@@ -42,14 +44,14 @@ fun SystemStatsPanel(
     ) {
         stats.memUsedFraction?.let { used ->
             StatRow(
-                label = "RAM",
-                value = stats.memAvailableBytes?.let { "${it.toGb()} GB livres" } ?: "",
+                label = stringResource(R.string.stat_ram),
+                value = stats.memAvailableBytes?.let { stringResource(R.string.stat_ram_free, it.toGb()) } ?: "",
                 fraction = used,
             )
         }
 
         stats.cpuPercent?.let { cpu ->
-            StatRow(label = "CPU", value = "$cpu%", fraction = cpu / 100f)
+            StatRow(label = stringResource(R.string.stat_cpu), value = "$cpu%", fraction = cpu / 100f)
         }
 
         // Draw and charge level are different things — one is a flow, the other a quantity — and
@@ -57,8 +59,10 @@ fun SystemStatsPanel(
         // one that answers this panel's question; the level is context, not a call to action.
         stats.currentMilliAmps?.let { ma ->
             StatRow(
-                label = if (stats.isCharging) "Carregando" else "Consumo",
-                value = "${abs(ma)} mA",
+                label = stringResource(
+                    if (stats.isCharging) R.string.stat_charging else R.string.stat_draw,
+                ),
+                value = stringResource(R.string.stat_milliamps, abs(ma)),
                 fraction = (abs(ma).toFloat() / HEAVY_DRAW_MA).coerceIn(0f, 1f),
                 // While charging the current says nothing about what the apps cost, so the bar
                 // stops meaning "how bad is this" and should not turn amber.
@@ -72,14 +76,14 @@ fun SystemStatsPanel(
         ) {
             stats.batteryPercent?.let { pct ->
                 Text(
-                    text = "Bateria $pct%",
+                    text = stringResource(R.string.stat_battery_level, pct),
                     style = MaterialTheme.typography.labelSmall,
                     color = HomeTextColorDim,
                 )
             }
             stats.temperatureCelsius?.let { temp ->
                 Text(
-                    text = "${"%.0f".format(temp)}°C",
+                    text = stringResource(R.string.stat_celsius, "%.0f".format(temp)),
                     style = MaterialTheme.typography.labelSmall,
                     color = if (temp >= HOT_CELSIUS) WarnColor else HomeTextColorDim,
                 )

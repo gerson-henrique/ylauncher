@@ -74,9 +74,11 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.ykatchou.ylauncher.R
 import com.ykatchou.ylauncher.data.model.AppInfo
 import com.ykatchou.ylauncher.data.model.FavoriteApp
 import com.ykatchou.ylauncher.data.repository.AppRepository
@@ -140,6 +142,10 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
+    // Resolved here because stringResource is composable-only and these are used inside
+    // click lambdas and gesture callbacks, which are not.
+    val appNotFound = stringResource(R.string.app_not_found)
+    val noWallpaperPicker = stringResource(R.string.no_wallpaper_picker)
     val favorites by viewModel.favorites.collectAsState()
     val homePrefs by viewModel.homePrefs.collectAsState()
     val isDrawerOpen by viewModel.isDrawerOpen.collectAsState()
@@ -295,7 +301,7 @@ fun HomeScreen(
                                 // Swipe right → Phone (or configured app)
                                 if (swipeRightPackage.isNotBlank()) {
                                     if (!AppLauncher.launch(context, swipeRightPackage, swipeRightActivity.ifBlank { null })) {
-                                        context.showToast("App not found")
+                                        context.showToast(appNotFound)
                                     }
                                 } else {
                                     context.openDialerApp()
@@ -304,7 +310,7 @@ fun HomeScreen(
                                 // Swipe left → Camera (or configured app)
                                 if (swipeLeftPackage.isNotBlank()) {
                                     if (!AppLauncher.launch(context, swipeLeftPackage, swipeLeftActivity.ifBlank { null })) {
-                                        context.showToast("App not found")
+                                        context.showToast(appNotFound)
                                     }
                                 } else {
                                     context.openCameraApp()
@@ -374,7 +380,7 @@ fun HomeScreen(
                                 notifications = notifications.values.toList(),
                                 resolveAppLabel = { pkg -> appRepository.findAppByPackage(pkg)?.appLabel },
                                 onClickNotification = { pkg ->
-                                    if (!AppLauncher.launch(context, pkg)) context.showToast("App not found")
+                                    if (!AppLauncher.launch(context, pkg)) context.showToast(appNotFound)
                                 },
                                 onDismissNotification = { pkg -> NotificationService.dismiss(pkg) },
                                 modifier = Modifier
@@ -430,7 +436,7 @@ fun HomeScreen(
                                         val launched = AppLauncher.launch(
                                             context, app.packageName, app.activityClassName, app.userHandle,
                                         )
-                                        if (!launched) context.showToast("App not found")
+                                        if (!launched) context.showToast(appNotFound)
                                     },
                                     onClose = { app -> viewModel.closeRunningApp(app) },
                                     notifications = notifications,
@@ -493,7 +499,7 @@ fun HomeScreen(
                                                     .size(48.dp)
                                                     .clickable {
                                                         val launched = AppLauncher.launch(context, app.packageName, app.activityClassName, app.userHandle)
-                                                        if (!launched) context.showToast("App not found")
+                                                        if (!launched) context.showToast(appNotFound)
                                                     },
                                             )
                                         }
@@ -676,12 +682,12 @@ fun HomeScreen(
         ) {
             // Add content
             DropdownMenuItem(
-                text = { Text("Add app") },
+                text = { Text(stringResource(R.string.add_app)) },
                 leadingIcon = { Text("📱") },
                 onClick = { showBackgroundMenu = false; addingAppToFavorites = true },
             )
             DropdownMenuItem(
-                text = { Text("Add folder") },
+                text = { Text(stringResource(R.string.add_folder)) },
                 leadingIcon = { Text("📁") },
                 onClick = {
                     showBackgroundMenu = false
@@ -689,7 +695,7 @@ fun HomeScreen(
                 },
             )
             DropdownMenuItem(
-                text = { Text("Add widget") },
+                text = { Text(stringResource(R.string.add_widget)) },
                 leadingIcon = { Text("🧩") },
                 onClick = {
                     showBackgroundMenu = false
@@ -701,12 +707,12 @@ fun HomeScreen(
 
             // Manage existing content
             DropdownMenuItem(
-                text = { Text("Edit favorites") },
+                text = { Text(stringResource(R.string.edit_favorites)) },
                 leadingIcon = { Text("✏️") },
                 onClick = { showBackgroundMenu = false; showEditFavorites = true },
             )
             DropdownMenuItem(
-                text = { Text("Reimport favorites") },
+                text = { Text(stringResource(R.string.reimport_favorites)) },
                 leadingIcon = { Text("🔄") },
                 onClick = {
                     showBackgroundMenu = false
@@ -719,7 +725,7 @@ fun HomeScreen(
             )
             if (homeWidgetIds.isNotEmpty()) {
                 DropdownMenuItem(
-                    text = { Text("Remove all widgets") },
+                    text = { Text(stringResource(R.string.remove_all_widgets)) },
                     leadingIcon = { Text("🗑️") },
                     onClick = {
                         showBackgroundMenu = false
@@ -728,7 +734,7 @@ fun HomeScreen(
                 )
             }
             DropdownMenuItem(
-                text = { Text("Change wallpaper") },
+                text = { Text(stringResource(R.string.change_wallpaper)) },
                 leadingIcon = { Text("🖼️") },
                 onClick = {
                     showBackgroundMenu = false
@@ -744,7 +750,7 @@ fun HomeScreen(
                                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             )
                         } catch (_: Exception) {
-                            context.showToast("No wallpaper picker found")
+                            context.showToast(noWallpaperPicker)
                         }
                     }
                 },
@@ -754,12 +760,12 @@ fun HomeScreen(
 
             // App-level
             DropdownMenuItem(
-                text = { Text("Settings") },
+                text = { Text(stringResource(R.string.settings)) },
                 leadingIcon = { Text("⚙️") },
                 onClick = { showBackgroundMenu = false; onNavigateToSettings() },
             )
             DropdownMenuItem(
-                text = { Text("About") },
+                text = { Text(stringResource(R.string.about)) },
                 leadingIcon = { Text("ℹ️") },
                 onClick = { showBackgroundMenu = false; onNavigateToAbout() },
             )
@@ -841,7 +847,7 @@ fun HomeScreen(
                 resolveApp = { appRepository.findAppByPackage(it.packageName) },
                 onLaunchApp = { folderApp ->
                     val launched = AppLauncher.launch(context, folderApp.packageName, folderApp.activityClassName)
-                    if (!launched) context.showToast("App not found")
+                    if (!launched) context.showToast(appNotFound)
                     openFolderId = null
                 },
                 onDismissNotification = { pkg -> NotificationService.dismiss(pkg) },
@@ -960,16 +966,16 @@ fun HomeScreen(
         if (showRemoveAllWidgetsConfirm) {
             AlertDialog(
                 onDismissRequest = { showRemoveAllWidgetsConfirm = false },
-                title = { Text("Remove all widgets?") },
-                text = { Text("This removes every widget from your home screen. You can add them back anytime.") },
+                title = { Text(stringResource(R.string.remove_all_widgets_title)) },
+                text = { Text(stringResource(R.string.remove_all_widgets_body)) },
                 confirmButton = {
                     TextButton(onClick = {
                         showRemoveAllWidgetsConfirm = false
                         viewModel.removeAllWidgets()
-                    }) { Text("Remove", color = MaterialTheme.colorScheme.error) }
+                    }) { Text(stringResource(R.string.remove), color = MaterialTheme.colorScheme.error) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showRemoveAllWidgetsConfirm = false }) { Text("Cancel") }
+                    TextButton(onClick = { showRemoveAllWidgetsConfirm = false }) { Text(stringResource(R.string.cancel)) }
                 },
             )
         }
@@ -978,16 +984,16 @@ fun HomeScreen(
         usageStatsRationaleAction?.let { action ->
             AlertDialog(
                 onDismissRequest = { usageStatsRationaleAction = null },
-                title = { Text("Show your recommended apps?") },
-                text = { Text("YLauncher can show your last-used and most-recommended apps on the home screen, but needs Usage Access permission to see what you open most.") },
+                title = { Text(stringResource(R.string.usage_access_title)) },
+                text = { Text(stringResource(R.string.usage_access_body)) },
                 confirmButton = {
                     TextButton(onClick = {
                         usageStatsRationaleAction = null
                         action()
-                    }) { Text("Continue") }
+                    }) { Text(stringResource(R.string.continue_action)) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { usageStatsRationaleAction = null }) { Text("Not now") }
+                    TextButton(onClick = { usageStatsRationaleAction = null }) { Text(stringResource(R.string.not_now)) }
                 },
             )
         }
