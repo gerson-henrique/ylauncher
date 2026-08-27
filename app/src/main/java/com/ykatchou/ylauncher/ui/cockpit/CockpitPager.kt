@@ -88,7 +88,7 @@ fun CockpitPager(
                     appRepository = appRepository,
                     onLeftColumnBounds = { leftColumnBounds = it },
                 )
-                PAGE_CLAUDE -> PlaceholderPage("Claude", "executor via Shizuku — em breve")
+                PAGE_CLAUDE -> com.ykatchou.ylauncher.ui.claude.ClaudeScreen()
             }
         }
     }
