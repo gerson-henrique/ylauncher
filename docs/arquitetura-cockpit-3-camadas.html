@@ -1,0 +1,332 @@
+<title>Cockpit de Três Camadas</title>
+<style>
+  :root {
+    --ground: #0d1013;
+    --surface: #14181c;
+    --surface-2: #1b2127;
+    --ink: #e8ebe9;
+    --muted: #7d8a92;
+    --line: #232a31;
+    --accent: #d4a017;
+    --accent-soft: #2a2312;
+    --p1: #5a9fd4;
+    --p1-soft: #14212c;
+    --p3: #7fae8b;
+    --p3-soft: #16241c;
+    --danger: #d8746d;
+    --danger-soft: #2a1917;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  :root[data-theme="light"] {
+    --ground: #f5f3ef; --surface: #ffffff; --surface-2: #eceae4; --ink: #16191b;
+    --muted: #5f6a6e; --line: #ddd8d0; --accent: #a8760a; --accent-soft: #f6ecd6;
+    --p1: #2b6ca3; --p1-soft: #e2edf5; --p3: #3f6f4e; --p3-soft: #e0ecdf;
+    --danger: #a3423d; --danger-soft: #f6e2e0;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --ground: #f5f3ef; --surface: #ffffff; --surface-2: #eceae4; --ink: #16191b;
+      --muted: #5f6a6e; --line: #ddd8d0; --accent: #a8760a; --accent-soft: #f6ecd6;
+      --p1: #2b6ca3; --p1-soft: #e2edf5; --p3: #3f6f4e; --p3-soft: #e0ecdf;
+      --danger: #a3423d; --danger-soft: #f6e2e0;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--ground); color: var(--ink);
+    font-family: var(--sans); line-height: 1.62; margin: 0;
+    padding: 0 1.25rem 6rem; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 74ch; margin: 0 auto; }
+  .wide { max-width: 100ch; margin: 0 auto; }
+
+  header { padding: 4.5rem 0 2.5rem; border-bottom: 1px solid var(--line); margin-bottom: 2.5rem; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 1rem;
+  }
+  h1 {
+    font-size: clamp(2rem, 5.5vw, 3rem); line-height: 1.05; letter-spacing: -0.03em;
+    font-weight: 680; margin: 0 0 1rem; text-wrap: balance;
+  }
+  .lede { font-size: 1.12rem; color: var(--muted); margin: 0; max-width: 60ch; }
+  .meta { display: flex; flex-wrap: wrap; gap: 1.4rem; margin-top: 2rem;
+    font-family: var(--mono); font-size: 0.76rem; color: var(--muted); }
+  .meta b { color: var(--ink); font-weight: 500; }
+
+  h2 { font-size: 1.55rem; letter-spacing: -0.02em; font-weight: 640; margin: 3.5rem 0 0.4rem; text-wrap: balance; }
+  h2 .n { font-family: var(--mono); font-size: 1rem; color: var(--accent); margin-right: 0.6rem; }
+  h2 + .sub { color: var(--muted); margin: 0 0 1.5rem; }
+  h3 { font-size: 1.05rem; font-weight: 620; margin: 2rem 0 0.5rem; letter-spacing: -0.01em; }
+  p { margin: 0 0 1rem; }
+  code { font-family: var(--mono); font-size: 0.85em; background: var(--surface-2);
+    padding: 0.1em 0.4em; border-radius: 3px; border: 1px solid var(--line); }
+
+  .scroller { overflow-x: auto; margin: 2rem 0; }
+  figure { margin: 0; }
+  figcaption { font-family: var(--mono); font-size: 0.8rem; color: var(--muted);
+    text-align: center; margin-top: 0.9rem; }
+
+  .principle {
+    border-left: 3px solid var(--accent); background: var(--surface);
+    padding: 1.3rem 1.5rem; margin: 2rem 0; border-radius: 0 5px 5px 0;
+  }
+  .principle .k { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 0.6rem; }
+  .principle b { color: var(--ink); }
+  .principle p:last-child { margin-bottom: 0; }
+
+  .pages { display: grid; gap: 1rem; margin: 1.5rem 0; }
+  @media (min-width: 720px) { .pages { grid-template-columns: repeat(3, 1fr); } }
+  .page { border: 1px solid var(--line); border-radius: 6px; background: var(--surface); padding: 1.2rem 1.3rem; }
+  .page.p1 { border-top: 3px solid var(--p1); }
+  .page.p2 { border-top: 3px solid var(--accent); }
+  .page.p3 { border-top: 3px solid var(--p3); }
+  .page .tag { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted); }
+  .page h3 { margin: 0.3rem 0 0.6rem; }
+  .page p { font-size: 0.9rem; margin: 0; color: var(--muted); }
+  .page .state { display: inline-block; font-family: var(--mono); font-size: 0.66rem;
+    padding: 0.14em 0.5em; border-radius: 3px; margin-top: 0.8rem; }
+  .state.done { background: var(--p3-soft); color: var(--p3); }
+  .state.new { background: var(--accent-soft); color: var(--accent); }
+
+  .flow { display: grid; grid-template-columns: 6rem 1fr; gap: 0 1.2rem;
+    padding: 1.1rem 0; border-top: 1px solid var(--line); }
+  .flow:last-of-type { border-bottom: 1px solid var(--line); }
+  .flow-k { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--accent); padding-top: 0.2rem; }
+  .flow b { font-weight: 620; display: block; margin-bottom: 0.25rem; }
+  .flow p { margin: 0; color: var(--muted); font-size: 0.93rem; }
+  .flow code { font-size: 0.82em; }
+
+  .risk { display: grid; grid-template-columns: auto 1fr; gap: 0 1rem; padding: 1rem 0; border-top: 1px solid var(--line); }
+  .risk:last-of-type { border-bottom: 1px solid var(--line); }
+  .risk-n { font-family: var(--mono); font-size: 0.8rem; color: var(--danger); padding-top: 0.15rem; }
+  .risk b { font-weight: 600; }
+  .risk p { margin: 0.25rem 0 0; color: var(--muted); font-size: 0.93rem; }
+
+  ul { padding-left: 1.15rem; margin: 0 0 1rem; }
+  li { margin-bottom: 0.4rem; }
+  li b { font-weight: 600; }
+
+  footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--line);
+    font-family: var(--mono); font-size: 0.76rem; color: var(--muted); }
+
+  svg text { font-family: var(--sans); }
+  svg .mono { font-family: var(--mono); }
+</style>
+
+<div class="wrap">
+<header>
+  <p class="eyebrow">Fork yLauncher · Arquitetura</p>
+  <h1>O launcher vira cockpit</h1>
+  <p class="lede">Três telas que se deslizam. À esquerda, o comando do cérebro no Dell. No centro, a home. À direita, o Claude que executa no aparelho. O launcher deixa de ser um lugar para abrir apps e passa a ser o painel de comando do sistema inteiro.</p>
+  <div class="meta">
+    <span><b>Base</b> feat/home-divergence</span>
+    <span><b>Aparelho</b> BV9300 Pro · Android 15</span>
+    <span><b>Decidido</b> cérebro no Dell · Claude via Shizuku</span>
+  </div>
+</header>
+
+<div class="principle">
+  <p class="k">O princípio que sustenta tudo</p>
+  <p><b>O launcher é o cockpit, não o motor.</b> Passamos o dia deixando esta home leve — de 302 MB para 153 MB. Embutir um orquestrador de IA e um agente com poder de shell dentro do processo do launcher jogaria esse trabalho fora e arriscaria travar a peça que você mais usa.</p>
+  <p>Então as três páginas são <b>superfícies de controle finas</b>. O processamento pesado vive fora: no Dell sempre ligado, ou atrás da ponte Shizuku que já construímos. A home continua sendo a home.</p>
+</div>
+</div>
+
+<div class="wide scroller">
+<figure>
+  <svg viewBox="0 0 960 520" role="img" aria-label="Diagrama das três páginas do launcher e para onde cada uma se conecta">
+    <defs>
+      <style>
+        .box { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; }
+        .lbl { font-size: 15px; font-weight: 640; fill: var(--ink); }
+        .sub { font-size: 11.5px; fill: var(--muted); }
+        .mono { font-size: 10.5px; fill: var(--muted); }
+        .pipe { fill: none; stroke-width: 2; }
+        .cap { font-size: 11px; font-weight: 600; }
+        .tag { font-size: 9.5px; letter-spacing: 0.06em; }
+      </style>
+
+      <!-- device frame: the three pages -->
+      <text class="tag" x="40" y="30" fill="var(--muted)">O APARELHO — UM PAGER DE TRÊS PÁGINAS</text>
+      <rect class="box" x="40" y="44" width="880" height="150" rx="12"/>
+
+      <!-- page 1 -->
+      <rect x="64" y="68" width="256" height="102" rx="8" fill="var(--p1-soft)" stroke="var(--p1)" stroke-width="1.5"/>
+      <text class="cap" x="80" y="92" fill="var(--p1)">◄ Página 1</text>
+      <text class="lbl" x="80" y="116" font-size="13">Orquestrador</text>
+      <text class="sub" x="80" y="136">controle remoto do Dell</text>
+      <text class="mono" x="80" y="156">thin client · lazy</text>
+
+      <!-- page 2 -->
+      <rect x="352" y="68" width="256" height="102" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/>
+      <text class="cap" x="368" y="92" fill="var(--accent)">Página 2 · MAIN</text>
+      <text class="lbl" x="368" y="116" font-size="13">Home</text>
+      <text class="sub" x="368" y="136">o que já construímos</text>
+      <text class="mono" x="368" y="156">153 MB · pronta</text>
+
+      <!-- page 3 -->
+      <rect x="640" y="68" width="256" height="102" rx="8" fill="var(--p3-soft)" stroke="var(--p3)" stroke-width="1.5"/>
+      <text class="cap" x="656" y="92" fill="var(--p3)">Página 3 ►</text>
+      <text class="lbl" x="656" y="116" font-size="13">Claude executor</text>
+      <text class="sub" x="656" y="136">IA que roda comandos</text>
+      <text class="mono" x="656" y="156">local · via Shizuku</text>
+
+      <!-- pipes down -->
+      <path class="pipe" d="M192 194 L192 250" stroke="var(--p1)"/>
+      <path class="pipe" d="M768 194 L768 250" stroke="var(--p3)"/>
+      <text class="mono" x="200" y="228" fill="var(--p1)">WebSocket / LAN</text>
+      <text class="mono" x="612" y="228" fill="var(--p3)">ShizukuShell + API Claude</text>
+
+      <!-- engines row -->
+      <text class="tag" x="40" y="286" fill="var(--muted)">OS MOTORES — FORA DO LAUNCHER</text>
+
+      <!-- Dell -->
+      <rect class="box" x="64" y="300" width="256" height="180" rx="10" stroke="var(--p1)"/>
+      <text class="lbl" x="84" y="330" fill="var(--p1)">Dell · o cérebro</text>
+      <text class="sub" x="84" y="356">sempre ligado</text>
+      <line x1="84" y1="372" x2="296" y2="372" stroke="var(--line)"/>
+      <text class="mono" x="84" y="394">servidor de estado (ws)</text>
+      <text class="mono" x="84" y="414">agentes de código</text>
+      <text class="mono" x="84" y="434">builds · PRs · logs</text>
+      <text class="mono" x="84" y="454">o "self" / Ruby</text>
+
+      <!-- Shizuku -->
+      <rect class="box" x="640" y="300" width="256" height="180" rx="10" stroke="var(--p3)"/>
+      <text class="lbl" x="660" y="330" fill="var(--p3)">Shizuku · o braço</text>
+      <text class="sub" x="660" y="356">shell uid, sem root</text>
+      <line x1="660" y1="372" x2="872" y2="372" stroke="var(--line)"/>
+      <text class="mono" x="660" y="394">ShizukuShell.run()</text>
+      <text class="mono" x="660" y="414">força-fecha, lê tasks…</text>
+      <text class="mono" x="660" y="434">já construído e testado</text>
+      <text class="mono" x="660" y="454">morre no reboot ⚠</text>
+
+      <!-- API cloud middle -->
+      <rect class="box" x="392" y="340" width="176" height="100" rx="10" stroke="var(--accent)"/>
+      <text class="lbl" x="412" y="372" font-size="13" fill="var(--accent)">API Claude</text>
+      <text class="mono" x="412" y="396">tool-use loop</text>
+      <text class="mono" x="412" y="416">chave protegida</text>
+
+      <!-- page3 -> api and shizuku -->
+      <path class="pipe" d="M768 250 L768 300" stroke="var(--p3)"/>
+      <path class="pipe" d="M700 250 C620 270, 540 300, 500 340" stroke="var(--accent)" stroke-dasharray="4 3"/>
+    </svg>
+  </figure>
+  <figcaption>As páginas são superfícies finas; os motores (Dell, Shizuku, API) vivem fora do launcher.</figcaption>
+</div>
+
+<div class="wrap">
+
+<h2><span class="n">01</span>As três páginas</h2>
+<p class="sub">Um <code>HorizontalPager</code> do Compose envolve tudo. A home é a página inicial; desliza para a esquerda chega o orquestrador, para a direita o Claude.</p>
+
+<div class="pages">
+  <div class="page p1">
+    <span class="tag">◄ esquerda</span>
+    <h3>Orquestrador</h3>
+    <p>Painel do que acontece no Dell: agentes rodando, builds, PRs, logs escorrendo ao vivo. Dispara trabalho e acompanha — o processo acontecendo, que é o que você quer ver.</p>
+    <span class="state new">a construir · depende do Dell</span>
+  </div>
+  <div class="page p2">
+    <span class="tag">centro · main</span>
+    <h3>Home</h3>
+    <p>Exatamente o que já existe: clima, relógio, apps abertos, os quatro fixos, o painel de métricas. Não muda — só passa a viver dentro do pager.</p>
+    <span class="state done">pronta</span>
+  </div>
+  <div class="page p3">
+    <span class="tag">direita ►</span>
+    <h3>Claude executor</h3>
+    <p>Um agente Claude que <b>roda comandos no aparelho</b> pela ponte Shizuku. Você pede em português, ele propõe o comando, executa de verdade, mostra o resultado.</p>
+    <span class="state new">a construir · autossuficiente</span>
+  </div>
+</div>
+
+<h2><span class="n">02</span>Página 3 — o Claude que age</h2>
+<p class="sub">A mais empolgante, e a que reaproveita mais do que já temos.</p>
+
+<p>É o padrão de <em>tool-use</em> da API Claude fechado num laço: você manda uma mensagem, o Claude decide se precisa rodar um comando, uma ferramenta executa esse comando via <code>ShizukuShell.run()</code> — o mesmo que já usamos para fechar apps e ler CPU — e o resultado volta para o Claude, que responde ou pede o próximo passo.</p>
+
+<div class="flow">
+  <span class="flow-k">Você</span>
+  <div><b>"quais apps estão comendo bateria?"</b><p>Mensagem em português na tela de chat da página 3.</p></div>
+</div>
+<div class="flow">
+  <span class="flow-k">Claude</span>
+  <div><b>Decide rodar <code>dumpsys batterystats</code></b><p>A API devolve uma chamada de ferramenta, não texto. O app a intercepta.</p></div>
+</div>
+<div class="flow">
+  <span class="flow-k">Shizuku</span>
+  <div><b>Executa e devolve a saída</b><p><code>ShizukuShell.run(...)</code> roda com uid de shell. O texto cru volta para o Claude.</p></div>
+</div>
+<div class="flow">
+  <span class="flow-k">Claude</span>
+  <div><b>Lê a saída e responde em português</b><p>"O Facebook gastou 12% desde a última carga, quase tudo em rede de fundo. Quer que eu restrinja?"</p></div>
+</div>
+
+<p>Autossuficiente: não depende do Dell. Reaproveita o <code>ShizukuShell</code> inteiro. É a fusão exata das duas ideias que você juntou — terminal privilegiado e IA — numa coisa só.</p>
+
+<h2><span class="n">03</span>Página 1 — o cockpit do Dell</h2>
+<p class="sub">O cérebro é o Dell; esta página é o controle remoto.</p>
+
+<p>O Dell roda um pequeno servidor que expõe o estado do "self" — os agentes ativos, o build da vez, os PRs, os logs — por um WebSocket na sua rede. A página 1 conecta quando você desliza até ela, mostra o fluxo ao vivo, e manda comandos de volta: iniciar um agente, aprovar um passo, parar um build.</p>
+
+<p>Isso encaixa direto na arquitetura que você já vinha desenhando — <b>Dell = cérebro</b> — e mantém a promessa do princípio: o trabalho pesado nunca toca o launcher. A página só desenha o que o Dell transmite.</p>
+
+<h2><span class="n">04</span>Riscos anotados</h2>
+<p class="sub">O que precisa de decisão ou cuidado antes de virar código.</p>
+
+<div class="risk">
+  <span class="risk-n">01</span>
+  <div><b>Conflito de gesto: o pager versus o arrastar-para-fechar.</b>
+  <p>Deslizar entre páginas é horizontal. Na home, arrastar um app aberto para o lado também é — é como se fecha. Os dois brigam pelo mesmo movimento. Sorte que já desligamos os gestos de Câmera/Telefone hoje; ainda assim, o pager precisa ceder a faixa da coluna esquerda para o fechar, ou o fechar muda de eixo.</p></div>
+</div>
+<div class="risk">
+  <span class="risk-n">02</span>
+  <div><b>Manter a home leve.</b>
+  <p>As páginas 1 e 3 só podem instanciar e conectar quando você desliza até elas — nunca em segundo plano. O laço da IA e o WebSocket do Dell precisam desligar ao sair da página, como o painel de métricas já faz com <code>WhileSubscribed</code>. Senão os 153 MB voltam a subir.</p></div>
+</div>
+<div class="risk">
+  <span class="risk-n">03</span>
+  <div><b>Claude com poder de shell precisa de freio.</b>
+  <p>Um agente que executa com uid de shell pode apagar, desinstalar, mudar configuração. Antes de rodar, comandos destrutivos passam por uma confirmação sua — o padrão "propõe, você aprova, então executa". Nunca um comando destrutivo silencioso.</p></div>
+</div>
+<div class="risk">
+  <span class="risk-n">04</span>
+  <div><b>A chave da API é dado sensível.</b>
+  <p>Guardada cifrada no aparelho, nunca no repositório do fork (que é público). Fora do controle de versão desde a primeira linha.</p></div>
+</div>
+<div class="risk">
+  <span class="risk-n">05</span>
+  <div><b>Shizuku morre no reboot.</b>
+  <p>A página 3 herda o problema da coluna de apps: sem Shizuku, o Claude perde o braço. Degrada com elegância — o chat continua, mas avisa que não consegue executar até você reativar o serviço.</p></div>
+</div>
+<div class="risk">
+  <span class="risk-n">06</span>
+  <div><b>A página 1 depende do Dell existir.</b>
+  <p>O servidor de estado no Dell é um projeto à parte, ligado ao seu "self"/Ruby. Enquanto ele não existe, a página 1 fica em espera — por isso a ordem abaixo começa pela página 3.</p></div>
+</div>
+
+<h2><span class="n">05</span>Por onde começar</h2>
+<p class="sub">Da fundação para o que depende de fora.</p>
+
+<div class="flow">
+  <span class="flow-k">Fase A</span>
+  <div><b>O esqueleto do pager</b><p>Envolver a home num <code>HorizontalPager</code> de três páginas, com 1 e 3 como placeholders vazios e preguiçosos. Resolve o conflito de gesto do risco 01. Entrega a navegação funcionando sem nenhuma lógica nova — e prova que a home continua leve.</p></div>
+</div>
+<div class="flow">
+  <span class="flow-k">Fase B</span>
+  <div><b>Página 3 — Claude + Shizuku</b><p>A que não depende de nada externo. Tela de chat, laço de tool-use da API, ferramentas ligadas ao <code>ShizukuShell</code>, o freio de confirmação. É a que dá mais prazer de usar e reaproveita o que já testamos.</p></div>
+</div>
+<div class="flow">
+  <span class="flow-k">Fase C</span>
+  <div><b>Página 1 — cockpit do Dell</b><p>Quando o servidor de estado do Dell existir. O cliente WebSocket, o painel ao vivo, os comandos de volta. Fecha o cockpit.</p></div>
+</div>
+
+<footer>
+  Documento de arquitetura · gerson-henrique/ylauncher · escrito antes da implementação, para revisão.
+</footer>
+</div>

@@ -21,7 +21,7 @@ import com.ykatchou.ylauncher.data.running.ShizukuShell
 import com.ykatchou.ylauncher.data.repository.ConfigBackupRepository
 import com.ykatchou.ylauncher.data.repository.PrefsRepository
 import com.ykatchou.ylauncher.ui.about.AboutScreen
-import com.ykatchou.ylauncher.ui.home.HomeScreen
+import com.ykatchou.ylauncher.ui.cockpit.CockpitPager
 import com.ykatchou.ylauncher.ui.settings.SettingsScreen
 import com.ykatchou.ylauncher.ui.theme.YLauncherTheme
 import com.ykatchou.ylauncher.widget.LauncherWidgetHost
@@ -108,7 +108,7 @@ class MainActivity : ComponentActivity() {
                 ) {
                     composable("home") {
                         BackHandler { }
-                        HomeScreen(
+                        CockpitPager(
                             onNavigateToAbout = { navController.navigate("about") },
                             onNavigateToSettings = { navController.navigate("settings") },
                             onRequestWidgetPicker = { _showWidgetPicker.value = true },
