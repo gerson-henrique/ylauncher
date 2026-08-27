@@ -1,12 +1,8 @@
 package com.ykatchou.ylauncher.ui.hal
 
 import android.graphics.drawable.Drawable
-import androidx.compose.animation.core.EaseInOut
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
@@ -41,16 +37,14 @@ fun HalButton(
 ) {
     var isPressed by remember { mutableStateOf(false) }
 
-    val infiniteTransition = rememberInfiniteTransition(label = "hal_glow")
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.15f,
-        targetValue = 0.45f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2200, easing = EaseInOut),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "glow_alpha",
-    )
+    // The glow was an endless pulse — rememberInfiniteTransition breathing between 0.15 and 0.45
+    // forever. That forces a redraw every frame for as long as the home screen is visible, which
+    // measured at 107% CPU on this device: more than a full core, with surfaceflinger and the
+    // compositor burning another 100% behind it. Raising the panel to 120Hz had doubled the cost.
+    //
+    // It also no longer meant anything. The pulse imitated HAL 9000's eye; this button opens the
+    // browser. A steady glow says the same thing for free.
+    val glowAlpha = 0.30f
 
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 1.1f else 1f,
