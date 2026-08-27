@@ -59,6 +59,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.ykatchou.ylauncher.R
 import com.ykatchou.ylauncher.data.model.AppInfo
 import com.ykatchou.ylauncher.ui.components.AlphabetSidebar
+import com.ykatchou.ylauncher.ui.components.AppIcon
 import com.ykatchou.ylauncher.util.AppIconCache
 import com.ykatchou.ylauncher.util.AppLauncher
 import com.ykatchou.ylauncher.util.openAppInfo
@@ -329,26 +330,14 @@ fun AppDrawerItem(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        // App icon — check cache first (instant), convert off main thread on miss
-        app.icon?.let { drawable ->
-            val bitmap: ImageBitmap? by produceState(
-                initialValue = AppIconCache.getIfCached(app.packageName, 40),
-                key1 = app.packageName,
-            ) {
-                if (value == null) {
-                    value = withContext(Dispatchers.IO) {
-                        AppIconCache.get(drawable, app.packageName, 40)
-                    }
-                }
-            }
-            bitmap?.let {
-                androidx.compose.foundation.Image(
-                    bitmap = it,
-                    contentDescription = app.appLabel,
-                    modifier = Modifier.size(40.dp),
-                )
-            }
-        }
+        AppIcon(
+            packageName = app.packageName,
+            activityClassName = app.activityClassName,
+            user = app.userHandle,
+            size = 40.dp,
+            sizePx = 40,
+            contentDescription = app.appLabel,
+        )
 
         Text(
             text = app.appLabel,

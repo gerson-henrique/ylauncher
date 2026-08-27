@@ -39,7 +39,7 @@ import androidx.compose.ui.zIndex
 import com.ykatchou.ylauncher.data.model.AppInfo
 import com.ykatchou.ylauncher.ui.components.dragHandle
 import com.ykatchou.ylauncher.ui.components.rememberDragDropListState
-import com.ykatchou.ylauncher.util.AppIconCache
+import com.ykatchou.ylauncher.ui.components.AppIcon
 import com.ykatchou.ylauncher.data.model.FavoriteApp
 
 @Composable
@@ -143,14 +143,14 @@ fun EditFavoritesSheet(
                             )
                         } else {
                             val appInfo = remember(favorite.packageName) { resolveApp(favorite.packageName) }
-                            appInfo?.icon?.let { drawable ->
-                                val bitmap = remember(favorite.packageName) {
-                                    AppIconCache.get(drawable, favorite.packageName, 32)
-                                }
-                                Image(
-                                    bitmap = bitmap,
+                            appInfo?.let { info ->
+                                AppIcon(
+                                    packageName = info.packageName,
+                                    activityClassName = info.activityClassName,
+                                    user = info.userHandle,
+                                    size = 32.dp,
+                                    sizePx = 32,
                                     contentDescription = favorite.displayName,
-                                    modifier = Modifier.size(32.dp),
                                 )
                             }
                         }

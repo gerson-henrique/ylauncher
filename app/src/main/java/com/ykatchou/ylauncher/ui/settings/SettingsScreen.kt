@@ -49,7 +49,7 @@ import com.ykatchou.ylauncher.data.repository.ConfigBackupRepository
 import com.ykatchou.ylauncher.data.repository.PrefsRepository
 import com.ykatchou.ylauncher.ui.hal.HalAction
 import com.ykatchou.ylauncher.ui.home.EditPanelsDialog
-import com.ykatchou.ylauncher.util.AppIconCache
+import com.ykatchou.ylauncher.ui.components.AppIcon
 import com.ykatchou.ylauncher.util.openDefaultLauncherSettings
 import com.ykatchou.ylauncher.util.showToast
 import kotlinx.coroutines.launch
@@ -670,16 +670,14 @@ private fun AppPickerDialog(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            app.icon?.let { icon ->
-                                val bitmap = remember(app.packageName) {
-                                    AppIconCache.get(icon, app.packageName, 36)
-                                }
-                                androidx.compose.foundation.Image(
-                                    bitmap = bitmap,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(32.dp),
-                                )
-                            }
+                            AppIcon(
+                                packageName = app.packageName,
+                                activityClassName = app.activityClassName,
+                                user = app.userHandle,
+                                size = 32.dp,
+                                sizePx = 36,
+                                contentDescription = null,
+                            )
                             Text(
                                 text = app.appLabel,
                                 style = MaterialTheme.typography.bodyMedium,

@@ -84,6 +84,7 @@ import com.ykatchou.ylauncher.data.model.FavoriteApp
 import com.ykatchou.ylauncher.data.repository.AppRepository
 import com.ykatchou.ylauncher.service.NotificationService
 import com.ykatchou.ylauncher.ui.components.AllAppsButton
+import com.ykatchou.ylauncher.ui.components.AppIcon
 import com.ykatchou.ylauncher.ui.components.AppWidgetContainer
 import com.ykatchou.ylauncher.ui.components.ClockWidget
 import com.ykatchou.ylauncher.ui.components.WeatherWidget
@@ -465,23 +466,21 @@ fun HomeScreen(
                                     verticalArrangement = Arrangement.spacedBy(12.dp),
                                 ) {
                                     quickApps.forEach { app ->
-                                        val bitmap = remember(app.icon) {
-                                            app.icon?.toBitmap(width = 48, height = 48)?.asImageBitmap()
-                                        }
-                                        if (bitmap != null) {
-                                            Image(
-                                                bitmap = bitmap,
-                                                contentDescription = app.appLabel,
-                                                // Pinned apps are a deliberate choice, not a guess:
-                                                // shown at full strength, unlike the faded suggestions before.
-                                                modifier = Modifier
-                                                    .size(48.dp)
-                                                    .clickable {
-                                                        val launched = AppLauncher.launch(context, app.packageName, app.activityClassName, app.userHandle)
-                                                        if (!launched) context.showToast(appNotFound)
-                                                    },
-                                            )
-                                        }
+                                        // Pinned apps are a deliberate choice, not a guess, so
+                                        // they draw at full strength — the suggestions this
+                                        // replaced were faded on purpose.
+                                        AppIcon(
+                                            packageName = app.packageName,
+                                            activityClassName = app.activityClassName,
+                                            user = app.userHandle,
+                                            size = 48.dp,
+                                            sizePx = 48,
+                                            contentDescription = app.appLabel,
+                                            modifier = Modifier.clickable {
+                                                val launched = AppLauncher.launch(context, app.packageName, app.activityClassName, app.userHandle)
+                                                if (!launched) context.showToast(appNotFound)
+                                            },
+                                        )
                                     }
                                 }
                             }

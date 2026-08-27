@@ -40,7 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ykatchou.ylauncher.R
 import com.ykatchou.ylauncher.data.model.AppInfo
-import com.ykatchou.ylauncher.util.AppIconCache
+import com.ykatchou.ylauncher.ui.components.AppIcon
 import com.ykatchou.ylauncher.data.model.AppNotification
 import com.ykatchou.ylauncher.ui.theme.HomeTextColor
 import com.ykatchou.ylauncher.ui.theme.HomeTextColorDim
@@ -128,16 +128,14 @@ fun FavoriteItem(
                     }
                 } else {
                     appInfo?.let { info ->
-                        info.icon?.let { drawable ->
-                            val bitmap = remember(info.packageName) {
-                                AppIconCache.get(drawable, info.packageName, 44)
-                            }
-                            Image(
-                                bitmap = bitmap,
-                                contentDescription = displayName,
-                                modifier = Modifier.size(44.dp),
-                            )
-                        }
+                        AppIcon(
+                            packageName = info.packageName,
+                            activityClassName = info.activityClassName,
+                            user = info.userHandle,
+                            size = 44.dp,
+                            sizePx = 44,
+                            contentDescription = displayName,
+                        )
                     }
                 }
                 if (showNotifBadge && notification != null && notification.count > 0) {

@@ -88,13 +88,6 @@ class AppInfoTest {
         assertNotEquals(a, b)
     }
 
-    // --- defaults ---
-
-    @Test
-    fun `icon defaults to null`() {
-        val app = appInfo()
-        assertNull(app.icon)
-    }
 
     // --- toString ---
 

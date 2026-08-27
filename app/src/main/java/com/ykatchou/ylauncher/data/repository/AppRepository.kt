@@ -71,7 +71,6 @@ class AppRepository @Inject constructor(
                         packageName = activity.applicationInfo.packageName,
                         activityClassName = activity.componentName.className,
                         userHandle = profile,
-                        icon = activity.getIcon(0),
                         normalizedLabel = normalizeText(label),
                     )
                 }
@@ -120,7 +119,6 @@ class AppRepository @Inject constructor(
                         packageName = activity.applicationInfo.packageName,
                         activityClassName = activity.componentName.className,
                         userHandle = profile,
-                        icon = activity.getIcon(0),
                         normalizedLabel = normalizeText(label),
                     )
                 )

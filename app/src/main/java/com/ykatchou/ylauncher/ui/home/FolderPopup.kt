@@ -37,7 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.ykatchou.ylauncher.data.model.AppInfo
-import com.ykatchou.ylauncher.util.AppIconCache
+import com.ykatchou.ylauncher.ui.components.AppIcon
 import com.ykatchou.ylauncher.data.model.FolderApp
 import com.ykatchou.ylauncher.service.NotificationService
 import kotlinx.coroutines.delay
@@ -183,14 +183,14 @@ private fun FolderAppRow(
             .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        appInfo?.icon?.let { drawable ->
-            val bitmap = remember(folderApp.packageName) {
-                AppIconCache.get(drawable, folderApp.packageName, 40)
-            }
-            Image(
-                bitmap = bitmap,
+        appInfo?.let { info ->
+            AppIcon(
+                packageName = info.packageName,
+                activityClassName = info.activityClassName,
+                user = info.userHandle,
+                size = 40.dp,
+                sizePx = 40,
                 contentDescription = folderApp.displayName,
-                modifier = Modifier.size(40.dp),
             )
             Spacer(modifier = Modifier.width(14.dp))
         }
