@@ -88,7 +88,7 @@ fun CockpitPager(
                     appRepository = appRepository,
                     onLeftColumnBounds = { leftColumnBounds = it },
                 )
-                PAGE_CLAUDE -> com.ykatchou.ylauncher.ui.claude.ClaudeScreen()
+                PAGE_RADAR -> com.ykatchou.ylauncher.ui.radar.RadarScreen()
             }
         }
     }
@@ -96,5 +96,5 @@ fun CockpitPager(
 
 const val PAGE_ORCHESTRATOR = 0
 const val PAGE_HOME = 1
-const val PAGE_CLAUDE = 2
+const val PAGE_RADAR = 2
 private const val PAGE_COUNT = 3
