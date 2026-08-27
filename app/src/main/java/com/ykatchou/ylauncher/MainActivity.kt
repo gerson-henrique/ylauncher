@@ -15,13 +15,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import com.ykatchou.ylauncher.billing.BillingManager
 import com.ykatchou.ylauncher.data.db.PanelDao
 import com.ykatchou.ylauncher.data.repository.AppRepository
+import com.ykatchou.ylauncher.data.running.ShizukuShell
 import com.ykatchou.ylauncher.data.repository.ConfigBackupRepository
 import com.ykatchou.ylauncher.data.repository.PrefsRepository
 import com.ykatchou.ylauncher.ui.about.AboutScreen
-import com.ykatchou.ylauncher.ui.home.HomeScreen
+import com.ykatchou.ylauncher.ui.cockpit.CockpitPager
 import com.ykatchou.ylauncher.ui.settings.SettingsScreen
 import com.ykatchou.ylauncher.ui.theme.YLauncherTheme
 import com.ykatchou.ylauncher.widget.LauncherWidgetHost
@@ -39,7 +39,6 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
 
     @Inject lateinit var appRepository: AppRepository
-    @Inject lateinit var billingManager: BillingManager
     @Inject lateinit var prefsRepository: PrefsRepository
     @Inject lateinit var widgetHost: LauncherWidgetHost
     @Inject lateinit var panelDao: PanelDao
@@ -51,6 +50,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var widgetBindLauncher: ActivityResultLauncher<Intent>
 
     companion object {
+        private const val SHIZUKU_REQUEST_CODE = 4001
+
         private val _homePressed = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
         val homePressed = _homePressed.asSharedFlow()
 
@@ -94,7 +95,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        billingManager.initialize()
+        requestShizukuIfAvailable()
         enableEdgeToEdge()
         setContent {
             val fontScale by prefsRepository.textSizeScale.collectAsState(initial = 1f)
@@ -107,19 +108,17 @@ class MainActivity : ComponentActivity() {
                 ) {
                     composable("home") {
                         BackHandler { }
-                        HomeScreen(
+                        CockpitPager(
                             onNavigateToAbout = { navController.navigate("about") },
                             onNavigateToSettings = { navController.navigate("settings") },
                             onRequestWidgetPicker = { _showWidgetPicker.value = true },
                             onWidgetSelected = { provider -> bindAndConfigureWidget(provider) },
                             onWidgetPickerDismiss = { _showWidgetPicker.value = false },
                             appRepository = appRepository,
-                            billingManager = billingManager,
                         )
                     }
                     composable("about") {
                         AboutScreen(
-                            billingManager = billingManager,
                             prefsRepository = prefsRepository,
                             onBack = { navController.popBackStack() },
                         )
@@ -128,7 +127,6 @@ class MainActivity : ComponentActivity() {
                         SettingsScreen(
                             prefsRepository = prefsRepository,
                             appRepository = appRepository,
-                            billingManager = billingManager,
                             panelDao = panelDao,
                             configBackupRepository = configBackupRepository,
                             onBack = { navController.popBackStack() },
@@ -151,7 +149,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        billingManager.destroy()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -197,6 +194,17 @@ class MainActivity : ComponentActivity() {
             widgetConfigLauncher.launch(configIntent)
         } else {
             saveWidget(widgetId)
+        }
+    }
+
+    /**
+     * Asks Shizuku for permission, which unlocks drag-to-close in the running-apps column.
+     * Only prompts when Shizuku is actually up — with it absent or stopped this is a no-op, and
+     * the column keeps working on usage stats without ever mentioning Shizuku to the user.
+     */
+    private fun requestShizukuIfAvailable() {
+        if (ShizukuShell.needsPermission()) {
+            ShizukuShell.requestPermission(SHIZUKU_REQUEST_CODE)
         }
     }
 

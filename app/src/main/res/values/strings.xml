@@ -1,4 +1,68 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">yLauncher</string>
+
+    <!-- Home: long-press menu -->
+    <string name="add_app">Add app</string>
+    <string name="add_folder">Add folder</string>
+    <string name="add_widget">Add widget</string>
+    <string name="edit_favorites">Edit favorites</string>
+    <string name="reimport_favorites">Reimport favorites</string>
+    <string name="remove_all_widgets">Remove all widgets</string>
+    <string name="change_wallpaper">Change wallpaper</string>
+    <string name="settings">Settings</string>
+    <string name="about">About</string>
+
+    <!-- Home: dialogs -->
+    <string name="remove_all_widgets_title">Remove all widgets?</string>
+    <string name="remove_all_widgets_body">This removes every widget from your home screen. You can add them back anytime.</string>
+    <string name="remove">Remove</string>
+    <string name="cancel">Cancel</string>
+    <string name="usage_access_title">Show your recommended apps?</string>
+    <string name="usage_access_body">YLauncher can show your last-used and most-recommended apps on the home screen, but needs Usage Access permission to see what you open most.</string>
+    <string name="continue_action">Continue</string>
+    <string name="not_now">Not now</string>
+
+    <!-- Home: running apps column -->
+    <string name="close">Close</string>
+
+    <!-- Home: system stats panel -->
+    <string name="stat_ram">RAM</string>
+    <string name="stat_cpu">CPU</string>
+    <string name="stat_ram_free">%1$s GB free</string>
+    <string name="stat_celsius">%1$s°C</string>
+
+    <!-- Favorite / app context menus -->
+    <string name="edit_folder">Edit folder</string>
+    <string name="move_to_folder">Move to folder</string>
+    <string name="move_to_panel">Move to panel…</string>
+    <string name="app_info">App info</string>
+    <string name="uninstall">Uninstall</string>
+    <string name="add_to_home">Add to home</string>
+    <string name="hide">Hide</string>
+
+    <!-- Drawer -->
+
+    <!-- Errors -->
+    <string name="app_not_found">App not found</string>
+    <string name="no_dialer_app">No dialer app found</string>
+    <string name="no_camera_app">No camera app found</string>
+    <string name="no_browser">No browser found</string>
+    <string name="no_wallpaper_picker">No wallpaper picker found</string>
+    <string name="no_assistant">No assistant found</string>
+    <string name="cannot_open_app_info">Cannot open app info</string>
+    <string name="cannot_uninstall_app">Cannot uninstall app</string>
+    <string name="cannot_open_launcher_settings">Cannot open launcher settings</string>
+    <string name="no_notifications">No notifications</string>
+    <string name="stat_charging_ma">Charging %1$d mA</string>
+    <string name="stat_draw_ma">Draw %1$d mA</string>
+    <!-- "1 serviços" was wrong; a count needs real plural rules, not a fixed suffix. -->
+    <plurals name="stat_services">
+        <item quantity="one">%1$d service</item>
+        <item quantity="other">%1$d services</item>
+    </plurals>
+    <string name="choose_wallpaper">Choose wallpaper</string>
+    <string name="stat_compressed">Compressed</string>
+    <string name="stat_gb">%1$s GB</string>
+    <string name="search_apps">Search apps…</string>
 </resources>

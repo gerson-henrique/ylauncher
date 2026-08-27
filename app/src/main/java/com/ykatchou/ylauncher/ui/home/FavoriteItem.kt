@@ -28,6 +28,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,12 +38,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ykatchou.ylauncher.R
 import com.ykatchou.ylauncher.data.model.AppInfo
-import com.ykatchou.ylauncher.util.AppIconCache
+import com.ykatchou.ylauncher.ui.components.AppIcon
 import com.ykatchou.ylauncher.data.model.AppNotification
 import com.ykatchou.ylauncher.ui.theme.HomeTextColor
 import com.ykatchou.ylauncher.ui.theme.HomeTextColorDim
 import com.ykatchou.ylauncher.ui.theme.WallpaperTextShadow
+import com.ykatchou.ylauncher.ui.theme.Y
 import kotlinx.coroutines.delay
 
 private val wallpaperShadow = WallpaperTextShadow
@@ -126,16 +129,14 @@ fun FavoriteItem(
                     }
                 } else {
                     appInfo?.let { info ->
-                        info.icon?.let { drawable ->
-                            val bitmap = remember(info.packageName) {
-                                AppIconCache.get(drawable, info.packageName, 44)
-                            }
-                            Image(
-                                bitmap = bitmap,
-                                contentDescription = displayName,
-                                modifier = Modifier.size(44.dp),
-                            )
-                        }
+                        AppIcon(
+                            packageName = info.packageName,
+                            activityClassName = info.activityClassName,
+                            user = info.userHandle,
+                            size = 44.dp,
+                            sizePx = 44,
+                            contentDescription = displayName,
+                        )
                     }
                 }
                 if (showNotifBadge && notification != null && notification.count > 0) {
@@ -145,14 +146,14 @@ fun FavoriteItem(
                             fontWeight = FontWeight.Bold,
                             shadow = null,
                         ),
-                        color = Color.White,
+                        color = Y.onAccent,
                         textAlign = TextAlign.Center,
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .offset(x = 4.dp, y = (-4).dp)
                             .defaultMinSize(minWidth = 18.dp, minHeight = 18.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFFE53935))
+                            .background(Y.accent)
                             .padding(horizontal = 4.dp, vertical = 1.dp),
                     )
                 }
@@ -217,37 +218,37 @@ fun FavoriteItem(
         ) {
             if (isFolder && onEditFolder != null) {
                 DropdownMenuItem(
-                    text = { Text("Edit folder") },
+                    text = { Text(stringResource(R.string.edit_folder)) },
                     onClick = { showMenu = false; onEditFolder() },
                 )
             }
             if (!isFolder && onMoveToFolder != null) {
                 DropdownMenuItem(
-                    text = { Text("Move to folder") },
+                    text = { Text(stringResource(R.string.move_to_folder)) },
                     onClick = { showMenu = false; onMoveToFolder() },
                 )
             }
             if (onMoveToPanel != null) {
                 DropdownMenuItem(
-                    text = { Text("Move to panel…") },
+                    text = { Text(stringResource(R.string.move_to_panel)) },
                     onClick = { showMenu = false; onMoveToPanel() },
                 )
             }
             if (onEditFavorites != null) {
                 DropdownMenuItem(
-                    text = { Text("Edit favorites") },
+                    text = { Text(stringResource(R.string.edit_favorites)) },
                     onClick = { showMenu = false; onEditFavorites() },
                 )
             }
             if (!isFolder && onAppInfo != null) {
                 DropdownMenuItem(
-                    text = { Text("App info") },
+                    text = { Text(stringResource(R.string.app_info)) },
                     onClick = { showMenu = false; onAppInfo() },
                 )
             }
             if (!isFolder && onUninstall != null) {
                 DropdownMenuItem(
-                    text = { Text("Uninstall") },
+                    text = { Text(stringResource(R.string.uninstall)) },
                     onClick = { showMenu = false; onUninstall() },
                 )
             }

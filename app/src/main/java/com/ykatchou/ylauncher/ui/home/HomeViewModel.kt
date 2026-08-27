@@ -14,6 +14,10 @@ import com.ykatchou.ylauncher.data.model.FolderApp
 import com.ykatchou.ylauncher.data.model.Panel
 import com.ykatchou.ylauncher.data.repository.AppRepository
 import com.ykatchou.ylauncher.data.repository.PrefsRepository
+import com.ykatchou.ylauncher.data.running.RunningAppsSource
+import com.ykatchou.ylauncher.data.stats.SystemStats
+import com.ykatchou.ylauncher.data.stats.SystemStatsReader
+import com.ykatchou.ylauncher.data.weather.WeatherRepository
 import com.ykatchou.ylauncher.util.ONE_WEEK_MS
 import com.ykatchou.ylauncher.util.UsageStatsHelper
 import com.ykatchou.ylauncher.widget.LauncherWidgetHost
@@ -30,6 +34,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -45,6 +51,9 @@ class HomeViewModel @Inject constructor(
     private val folderDao: FolderDao,
     private val panelDao: PanelDao,
     private val prefsRepository: PrefsRepository,
+    private val runningAppsSource: RunningAppsSource,
+    private val systemStatsReader: SystemStatsReader,
+    val weatherRepository: WeatherRepository,
     val widgetHost: LauncherWidgetHost,
 ) : ViewModel() {
 
@@ -88,34 +97,75 @@ class HomeViewModel @Inject constructor(
         favs.filter { it.panelId == panel }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val suggestedApps: StateFlow<List<AppInfo>> = combine(
-        allFavorites,
-        prefsRepository.suggestionCount,
-        appRepository.appList,
+
+
+    /**
+     * Whether the running-apps column should offer drag-to-close.
+     *
+     * A StateFlow, not a getter. As a getter this was read on every recomposition of the home
+     * screen, and the chain behind it ends in Shizuku.pingBinder() — a binder call, on the main
+     * thread, many times a second. With Shizuku up it answers fast enough to hide the mistake;
+     * with Shizuku down, which is every boot, each read reaches for a service that is not there.
+     */
+    val canCloseRunningApps: StateFlow<Boolean> = _usageStatsVersion
+        .map { runningAppsSource.canClose }
+        .flowOn(Dispatchers.IO)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    /**
+     * Live readings for the panel under the running-apps column. Polled rather than pushed,
+     * because none of these sources emit events, and only while the home screen is actually being
+     * looked at — WhileSubscribed stops the loop the moment the user opens an app, so this costs
+     * nothing in the background.
+     */
+    val systemStats: StateFlow<SystemStats> = flow {
+        while (true) {
+            emit(systemStatsReader.read())
+            delay(STATS_INTERVAL_MS)
+        }
+    }.flowOn(Dispatchers.IO)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SystemStats())
+
+    /**
+     * The left column: what is open right now, most recent first. Recomputed whenever the home
+     * screen comes back to the foreground, since the list goes stale the moment the user leaves.
+     */
+    val runningApps: StateFlow<List<AppInfo>> = combine(
         _usageStatsVersion,
-    ) { favs, count, _, _ ->
-        if (count == 0) return@combine emptyList()
-        val favPackages = favs.map { it.packageName }.toSet()
-        val topApps = UsageStatsHelper.getTopApps(context, appRepository, count = count + 10)
-        topApps.filter { it.packageName !in favPackages }.take(count)
+        appRepository.appList,
+    ) { _, _ ->
+        // Null means the source could not read; an empty list means nothing is open. Both show
+        // an empty column, but only the second one is the truth — and the adaptive source has
+        // already tried the fallback before returning null here.
+        runningAppsSource.getRunningApps(RUNNING_APPS_LIMIT).orEmpty()
     }.flowOn(Dispatchers.IO)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val recentApps: StateFlow<List<AppInfo>> = combine(
-        allFavorites,
-        prefsRepository.recentAppsCount,
-        suggestedApps,
-        _usageStatsVersion,
-    ) { favs, recentCount, suggested, _ ->
-        if (recentCount == 0) return@combine emptyList()
-        val favPackages = favs.map { it.packageName }.toSet()
-        val suggestedPackages = suggested.map { it.packageName }.toSet()
-        UsageStatsHelper.getRecentApps(
-            context, appRepository, count = recentCount,
-            excludePackages = favPackages + suggestedPackages,
-        )
-    }.flowOn(Dispatchers.IO)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    /** Ends [app] and drops it from the column. No-op when the source cannot close. */
+    fun closeRunningApp(app: AppInfo) {
+        if (!runningAppsSource.canClose) return
+        viewModelScope.launch(Dispatchers.IO) {
+            runningAppsSource.close(app)
+            refreshUsageStats()
+        }
+    }
+
+    /**
+     * The pinned right-hand column, resolved to installed apps and kept in the order the
+     * user set. A package that is not installed simply drops out instead of leaving a hole.
+     * Where the same package exists in both the personal and the work profile, the personal
+     * one wins — the column is a shortcut, not a profile switcher.
+     */
+    val quickApps: StateFlow<List<AppInfo>> = combine(
+        prefsRepository.quickApps,
+        appRepository.appList,
+    ) { packages, apps ->
+        val mine = android.os.Process.myUserHandle()
+        packages.mapNotNull { pkg ->
+            val matches = apps.filter { it.packageName == pkg }
+            matches.firstOrNull { it.userHandle == mine } ?: matches.firstOrNull()
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val homeWidgetIds = prefsRepository.homeWidgetIds
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -128,7 +178,7 @@ class HomeViewModel @Inject constructor(
     // Magic-button (HAL) actions are global, shared across all panels.
     val halTapAction: StateFlow<String> = homePrefs
         .map { it.halTapActionRaw }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "ASSISTANT")
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), PrefsRepository.DEFAULT_HAL_TAP_ACTION)
 
     val halLongPressAction: StateFlow<String> = homePrefs
         .map { it.halLongPressActionRaw }
@@ -186,6 +236,12 @@ class HomeViewModel @Inject constructor(
 
     companion object {
         private const val TAG = "HomeViewModel"
+
+        /** Beyond a handful the column stops being a switcher and becomes a list to read. */
+        private const val RUNNING_APPS_LIMIT = 6
+
+        /** Fast enough to feel live, slow enough not to be a battery cost of its own. */
+        private const val STATS_INTERVAL_MS = 3000L
     }
 
     /**
@@ -536,4 +592,5 @@ class HomeViewModel @Inject constructor(
         super.onCleared()
         appRepository.unregisterCallback()
     }
+
 }

@@ -40,6 +40,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.ImageBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -55,8 +56,10 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.ykatchou.ylauncher.R
 import com.ykatchou.ylauncher.data.model.AppInfo
 import com.ykatchou.ylauncher.ui.components.AlphabetSidebar
+import com.ykatchou.ylauncher.ui.components.AppIcon
 import com.ykatchou.ylauncher.util.AppIconCache
 import com.ykatchou.ylauncher.util.AppLauncher
 import com.ykatchou.ylauncher.util.openAppInfo
@@ -166,7 +169,7 @@ fun AppDrawerScreen(
                 onValueChange = { viewModel.updateSearchQuery(it) },
                 placeholder = {
                     Text(
-                        "Search apps...",
+                        stringResource(R.string.search_apps),
                         style = MaterialTheme.typography.bodyLarge,
                     )
                 },
@@ -327,26 +330,14 @@ fun AppDrawerItem(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        // App icon — check cache first (instant), convert off main thread on miss
-        app.icon?.let { drawable ->
-            val bitmap: ImageBitmap? by produceState(
-                initialValue = AppIconCache.getIfCached(app.packageName, 40),
-                key1 = app.packageName,
-            ) {
-                if (value == null) {
-                    value = withContext(Dispatchers.IO) {
-                        AppIconCache.get(drawable, app.packageName, 40)
-                    }
-                }
-            }
-            bitmap?.let {
-                androidx.compose.foundation.Image(
-                    bitmap = it,
-                    contentDescription = app.appLabel,
-                    modifier = Modifier.size(40.dp),
-                )
-            }
-        }
+        AppIcon(
+            packageName = app.packageName,
+            activityClassName = app.activityClassName,
+            user = app.userHandle,
+            size = 40.dp,
+            sizePx = 40,
+            contentDescription = app.appLabel,
+        )
 
         Text(
             text = app.appLabel,
@@ -360,25 +351,25 @@ fun AppDrawerItem(
         ) {
             if (onAddToHome != null) {
                 DropdownMenuItem(
-                    text = { Text("Add to home") },
+                    text = { Text(stringResource(R.string.add_to_home)) },
                     onClick = { showMenu = false; onAddToHome() },
                 )
             }
             if (onHide != null) {
                 DropdownMenuItem(
-                    text = { Text("Hide") },
+                    text = { Text(stringResource(R.string.hide)) },
                     onClick = { showMenu = false; onHide() },
                 )
             }
             if (onAppInfo != null) {
                 DropdownMenuItem(
-                    text = { Text("App info") },
+                    text = { Text(stringResource(R.string.app_info)) },
                     onClick = { showMenu = false; onAppInfo() },
                 )
             }
             if (onUninstall != null) {
                 DropdownMenuItem(
-                    text = { Text("Uninstall") },
+                    text = { Text(stringResource(R.string.uninstall)) },
                     onClick = { showMenu = false; onUninstall() },
                 )
             }

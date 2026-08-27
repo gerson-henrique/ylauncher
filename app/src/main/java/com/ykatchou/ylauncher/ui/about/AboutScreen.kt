@@ -30,38 +30,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import com.ykatchou.ylauncher.billing.BillingManager
-import com.ykatchou.ylauncher.billing.PurchaseEvent
 import com.ykatchou.ylauncher.data.repository.PrefsRepository
-import com.ykatchou.ylauncher.ui.components.CoffeeFab
 
 @Composable
 fun AboutScreen(
-    billingManager: BillingManager,
     prefsRepository: PrefsRepository,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
-    val billingState by billingManager.billingState.collectAsState()
-    val purchaseEvent by billingManager.purchaseEvent.collectAsState()
-    val showDonation by prefsRepository.showDonation.collectAsState(initial = true)
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(purchaseEvent) {
-        when (purchaseEvent) {
-            is PurchaseEvent.Success -> {
-                snackbarHostState.showSnackbar("Thank you for your support!")
-                billingManager.consumePurchaseEvent()
-            }
-            is PurchaseEvent.Error -> {
-                snackbarHostState.showSnackbar("Payment error. Try Ko-fi instead?")
-                billingManager.consumePurchaseEvent()
-            }
-            null -> {}
-        }
-    }
 
     fun openUrl(url: String) {
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
@@ -98,28 +78,6 @@ fun AboutScreen(
                 HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f))
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Support the developer
-                if (showDonation) {
-                    SectionHeader("Support the developer")
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "If you enjoy yLauncher, consider buying me a coffee!",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-                            modifier = Modifier.weight(1f),
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        CoffeeFab(
-                            billingManager = billingManager,
-                            billingState = billingState,
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
-                    HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f))
-                    Spacer(modifier = Modifier.height(24.dp))
-                }
 
                 // Author
                 SectionHeader("Created by")

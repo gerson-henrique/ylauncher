@@ -102,8 +102,11 @@ dependencies {
     // DataStore
     implementation(libs.datastore.preferences)
 
-    // Billing
-    implementation(libs.billing.ktx)
+    // Shizuku: lets the launcher call privileged system APIs with shell's identity, which is the
+    // only way an ordinary app can list real tasks and end another app. Optional at runtime —
+    // the running-apps column falls back to usage stats when the service is not up.
+    implementation(libs.shizuku.api)
+    implementation(libs.shizuku.provider)
 
     // Hilt
     implementation(libs.hilt.android)

@@ -21,7 +21,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
@@ -42,18 +41,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.ykatchou.ylauncher.billing.BillingManager
 import com.ykatchou.ylauncher.data.db.PanelDao
 import com.ykatchou.ylauncher.data.model.AppInfo
 import com.ykatchou.ylauncher.data.model.Panel
 import com.ykatchou.ylauncher.data.repository.AppRepository
 import com.ykatchou.ylauncher.data.repository.ConfigBackupRepository
 import com.ykatchou.ylauncher.data.repository.PrefsRepository
-import com.ykatchou.ylauncher.ui.components.CoffeeFab
-import com.ykatchou.ylauncher.ui.components.RateFab
 import com.ykatchou.ylauncher.ui.hal.HalAction
 import com.ykatchou.ylauncher.ui.home.EditPanelsDialog
-import com.ykatchou.ylauncher.util.AppIconCache
+import com.ykatchou.ylauncher.ui.components.AppIcon
 import com.ykatchou.ylauncher.util.openDefaultLauncherSettings
 import com.ykatchou.ylauncher.util.showToast
 import kotlinx.coroutines.launch
@@ -65,7 +61,6 @@ import kotlin.math.roundToInt
 fun SettingsScreen(
     prefsRepository: PrefsRepository,
     appRepository: AppRepository,
-    billingManager: BillingManager,
     panelDao: PanelDao,
     configBackupRepository: ConfigBackupRepository,
     onBack: () -> Unit,
@@ -82,17 +77,14 @@ fun SettingsScreen(
     val swipeLeftName by prefsRepository.swipeLeftName.collectAsState(initial = "Camera")
     val swipeRightName by prefsRepository.swipeRightName.collectAsState(initial = "Phone")
     val textSizeScale by prefsRepository.textSizeScale.collectAsState(initial = 1f)
-    val suggestionCount by prefsRepository.suggestionCount.collectAsState(initial = 3)
-    val recentAppsCount by prefsRepository.recentAppsCount.collectAsState(initial = 0)
     val panels by panelDao.getAllPanels().collectAsState(initial = emptyList())
     val autoLaunchDelay by prefsRepository.autoLaunchDelay.collectAsState(initial = 0f)
     val showNotifBubble by prefsRepository.showNotifBubble.collectAsState(initial = true)
     val showNotifPreview by prefsRepository.showNotifPreview.collectAsState(initial = true)
     val showNotifBadge by prefsRepository.showNotifBadge.collectAsState(initial = true)
     val showDonation by prefsRepository.showDonation.collectAsState(initial = true)
-    val billingState by billingManager.billingState.collectAsState()
     val activePanel by prefsRepository.activePanel.collectAsState(initial = 0L)
-    val halTap by prefsRepository.halTapAction.collectAsState(initial = "ASSISTANT")
+    val halTap by prefsRepository.halTapAction.collectAsState(initial = PrefsRepository.DEFAULT_HAL_TAP_ACTION)
     val halLongPress by prefsRepository.halLongPressAction.collectAsState(initial = "SETTINGS")
     val halDoubleTap by prefsRepository.halDoubleTapAction.collectAsState(initial = "APP_DRAWER")
     var showManagePanels by remember { mutableStateOf(false) }
@@ -119,8 +111,6 @@ fun SettingsScreen(
 
     // Local state for sliders to avoid excessive DataStore writes during drag
     var sliderValue by remember(textSizeScale) { mutableFloatStateOf(textSizeScale) }
-    var suggestionSlider by remember(suggestionCount) { mutableFloatStateOf(suggestionCount.toFloat()) }
-    var recentSlider by remember(recentAppsCount) { mutableFloatStateOf(recentAppsCount.toFloat()) }
     var autoLaunchDelaySlider by remember(autoLaunchDelay) { mutableFloatStateOf(autoLaunchDelay) }
 
     Surface(
@@ -180,51 +170,10 @@ fun SettingsScreen(
                 )
             }
 
-            // Suggestion count slider
-            Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                Text(
-                    text = "Suggested apps",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                Text(
-                    text = if (suggestionSlider.roundToInt() == 0) "Off" else "${suggestionSlider.roundToInt()} most used",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-                )
-                Slider(
-                    value = suggestionSlider,
-                    onValueChange = { suggestionSlider = it },
-                    onValueChangeFinished = {
-                        scope.launch { prefsRepository.setSuggestionCount(suggestionSlider.roundToInt()) }
-                    },
-                    valueRange = 0f..8f,
-                    steps = 7,
-                )
-            }
-
-            // Recent apps count slider
-            Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                Text(
-                    text = "Recent apps",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                Text(
-                    text = if (recentSlider.roundToInt() == 0) "Off" else "${recentSlider.roundToInt()} last used",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-                )
-                Slider(
-                    value = recentSlider,
-                    onValueChange = { recentSlider = it },
-                    onValueChangeFinished = {
-                        scope.launch { prefsRepository.setRecentAppsCount(recentSlider.roundToInt()) }
-                    },
-                    valueRange = 0f..8f,
-                    steps = 7,
-                )
-            }
+            // The "Suggested apps" and "Recent apps" sliders lived here. The right-hand column
+            // is now a fixed set of pinned apps instead of a usage-ranked guess, so the sliders
+            // no longer controlled anything on screen. The underlying prefs are kept so existing
+            // config backups still restore cleanly.
 
             Spacer(modifier = Modifier.height(16.dp))
             HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f))
@@ -384,18 +333,6 @@ fun SettingsScreen(
                 onCheckedChange = { scope.launch { prefsRepository.setShowDonation(it) } },
             )
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
-            ) {
-                CoffeeFab(
-                    billingManager = billingManager,
-                    billingState = billingState,
-                )
-                RateFab()
-            }
 
             Spacer(modifier = Modifier.height(16.dp))
             HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f))
@@ -733,16 +670,14 @@ private fun AppPickerDialog(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            app.icon?.let { icon ->
-                                val bitmap = remember(app.packageName) {
-                                    AppIconCache.get(icon, app.packageName, 36)
-                                }
-                                androidx.compose.foundation.Image(
-                                    bitmap = bitmap,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(32.dp),
-                                )
-                            }
+                            AppIcon(
+                                packageName = app.packageName,
+                                activityClassName = app.activityClassName,
+                                user = app.userHandle,
+                                size = 32.dp,
+                                sizePx = 36,
+                                contentDescription = null,
+                            )
                             Text(
                                 text = app.appLabel,
                                 style = MaterialTheme.typography.bodyMedium,

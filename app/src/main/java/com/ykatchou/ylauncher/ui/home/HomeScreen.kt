@@ -15,6 +15,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -62,6 +63,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -74,20 +76,20 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.ykatchou.ylauncher.R
 import com.ykatchou.ylauncher.data.model.AppInfo
 import com.ykatchou.ylauncher.data.model.FavoriteApp
 import com.ykatchou.ylauncher.data.repository.AppRepository
 import com.ykatchou.ylauncher.service.NotificationService
-import com.ykatchou.ylauncher.billing.BillingManager
-import com.ykatchou.ylauncher.billing.BillingState
 import com.ykatchou.ylauncher.ui.components.AllAppsButton
+import com.ykatchou.ylauncher.ui.components.AppIcon
 import com.ykatchou.ylauncher.ui.components.AppWidgetContainer
 import com.ykatchou.ylauncher.ui.components.ClockWidget
-import com.ykatchou.ylauncher.ui.components.NotificationBubble
-import com.ykatchou.ylauncher.ui.components.ReviewPromptDialog
+import com.ykatchou.ylauncher.ui.components.WeatherWidget
 import com.ykatchou.ylauncher.ui.components.WidgetPickerDialog
 import com.ykatchou.ylauncher.ui.drawer.AppDrawerScreen
 import com.ykatchou.ylauncher.ui.hal.HalAction
@@ -97,15 +99,12 @@ import com.ykatchou.ylauncher.ui.onboarding.OnboardingTourOverlay
 import com.ykatchou.ylauncher.ui.theme.HomeTextColor
 import com.ykatchou.ylauncher.ui.theme.HomeTextColorDim
 import com.ykatchou.ylauncher.ui.theme.WallpaperTextShadow
+import com.ykatchou.ylauncher.ui.theme.glass
 import com.ykatchou.ylauncher.util.AppLauncher
-import com.ykatchou.ylauncher.util.ONE_WEEK_MS
 import com.ykatchou.ylauncher.util.expandNotificationDrawer
 import com.ykatchou.ylauncher.util.openAppInfo
 import com.ykatchou.ylauncher.util.openCameraApp
 import com.ykatchou.ylauncher.util.openDialerApp
-import com.ykatchou.ylauncher.util.openPlayStoreListing
-import com.ykatchou.ylauncher.util.sendFeedbackEmail
-import com.ykatchou.ylauncher.util.shouldShowReviewPrompt
 import com.ykatchou.ylauncher.util.showToast
 import com.ykatchou.ylauncher.util.uninstallApp
 import androidx.compose.ui.graphics.asImageBitmap
@@ -136,10 +135,18 @@ fun HomeScreen(
     onWidgetSelected: (ComponentName) -> Unit,
     onWidgetPickerDismiss: () -> Unit,
     appRepository: AppRepository,
-    billingManager: BillingManager,
+    // Lets the pager above learn where the running-apps column sits, so a horizontal drag that
+    // starts inside it closes an app instead of flipping the page. Default no-op keeps HomeScreen
+    // usable outside the cockpit.
+    onLeftColumnBounds: (androidx.compose.ui.geometry.Rect) -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
+    // Resolved here because stringResource is composable-only and these are used inside
+    // click lambdas and gesture callbacks, which are not.
+    val appNotFound = stringResource(R.string.app_not_found)
+    val noWallpaperPicker = stringResource(R.string.no_wallpaper_picker)
+    val chooseWallpaper = stringResource(R.string.choose_wallpaper)
     val favorites by viewModel.favorites.collectAsState()
     val homePrefs by viewModel.homePrefs.collectAsState()
     val isDrawerOpen by viewModel.isDrawerOpen.collectAsState()
@@ -154,10 +161,8 @@ fun HomeScreen(
     val appList by appRepository.appList.collectAsState()
     // Unpack frequently-used prefs as local vals for readability
     val showClock = homePrefs.showClock
-    val showNotifBubble = homePrefs.showNotifBubble
     val showNotifPreview = homePrefs.showNotifPreview
     val showNotifBadge = homePrefs.showNotifBadge
-    val showDonation = homePrefs.showDonation
     val firstLaunchTimestamp = homePrefs.firstLaunchTimestamp
     val swipeLeftEnabled = homePrefs.swipeLeftEnabled
     val swipeRightEnabled = homePrefs.swipeRightEnabled
@@ -168,18 +173,8 @@ fun HomeScreen(
     val halAssistantPackage = homePrefs.halAssistantPackage
     val reviewNeverAsk = homePrefs.reviewNeverAsk
     val reviewSnoozedUntil = homePrefs.reviewSnoozedUntil
-    val billingState by billingManager.billingState.collectAsState()
-    val showCoffeeFab = showDonation && firstLaunchTimestamp > 0L &&
-        (System.currentTimeMillis() - firstLaunchTimestamp) >= ONE_WEEK_MS
     val showWidgetPicker by com.ykatchou.ylauncher.MainActivity.showWidgetPicker.collectAsState()
     val hasSeenOnboardingTour by viewModel.hasSeenOnboardingTour.collectAsState()
-    val isReviewPromptEligible = shouldShowReviewPrompt(
-        hasSeenOnboardingTour = hasSeenOnboardingTour == true,
-        reviewNeverAsk = reviewNeverAsk,
-        firstLaunchTimestamp = firstLaunchTimestamp,
-        reviewSnoozedUntil = reviewSnoozedUntil,
-        now = System.currentTimeMillis(),
-    )
 
     // Ensure notification listener is connected and seeded
     LaunchedEffect(Unit) {
@@ -203,10 +198,6 @@ fun HomeScreen(
         }
     }
 
-    var showReviewDialog by remember { mutableStateOf(false) }
-    LaunchedEffect(isReviewPromptEligible) {
-        if (isReviewPromptEligible) showReviewDialog = true
-    }
 
     // Refresh usage stats every time the home screen resumes (after switching apps, closing app menu, etc.)
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -235,12 +226,6 @@ fun HomeScreen(
     val density = LocalDensity.current
     val panelSweepDistancePx =
         with(density) { configuration.screenHeightDp.dp.toPx() } * PANEL_SWEEP_HEIGHT_FRACTION
-    // Bounds of the notification bubble, so swipe-to-dismiss inside it doesn't also
-    // trigger the whole-screen swipe-to-launch-camera/phone gesture below.
-    var notifBubbleBounds by remember { mutableStateOf<Rect?>(null) }
-    LaunchedEffect(showClock, showNotifBubble) {
-        if (!showClock || !showNotifBubble) notifBubbleBounds = null
-    }
     // Bounds of the panel switcher row, so its own drag-to-switch/long-press-to-edit
     // gestures don't also trigger the whole-screen swipe-to-launch-camera/phone gesture below.
     var panelSwitcherBounds by remember { mutableStateOf<Rect?>(null) }
@@ -266,11 +251,6 @@ fun HomeScreen(
                 .pointerInput(swipeLeftEnabled, swipeRightEnabled) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                        val bubbleRect = notifBubbleBounds
-                        if (bubbleRect != null && bubbleRect.contains(down.position)) {
-                            // Let the notification bubble handle its own swipe-to-dismiss/scroll.
-                            return@awaitEachGesture
-                        }
                         val switcherRect = panelSwitcherBounds
                         if (switcherRect != null && switcherRect.contains(down.position)) {
                             // Let the panel switcher handle its own drag-to-switch/long-press-to-edit.
@@ -295,7 +275,7 @@ fun HomeScreen(
                                 // Swipe right → Phone (or configured app)
                                 if (swipeRightPackage.isNotBlank()) {
                                     if (!AppLauncher.launch(context, swipeRightPackage, swipeRightActivity.ifBlank { null })) {
-                                        context.showToast("App not found")
+                                        context.showToast(appNotFound)
                                     }
                                 } else {
                                     context.openDialerApp()
@@ -304,7 +284,7 @@ fun HomeScreen(
                                 // Swipe left → Camera (or configured app)
                                 if (swipeLeftPackage.isNotBlank()) {
                                     if (!AppLauncher.launch(context, swipeLeftPackage, swipeLeftActivity.ifBlank { null })) {
-                                        context.showToast("App not found")
+                                        context.showToast(appNotFound)
                                     }
                                 } else {
                                     context.openCameraApp()
@@ -341,7 +321,13 @@ fun HomeScreen(
                     .padding(vertical = if (isLandscape) 8.dp else 48.dp),
                 verticalArrangement = Arrangement.SpaceBetween,
             ) {
-                // Top: Clock + notification bubble
+                // Top: weather on the left, clock on the right.
+                //
+                // The notification bubble that used to sit here is gone. It duplicated the system
+                // shade while doing less — no replies, no actions, five items truncated to two
+                // lines — and it needed notification-listener access, the most invasive permission
+                // Android grants, to earn that. The per-app notification summary in the column
+                // uses the same feed and is the part worth having.
                 if (showClock) {
                     Row(
                         modifier = Modifier
@@ -350,6 +336,21 @@ fun HomeScreen(
                             .height(IntrinsicSize.Min),
                         verticalAlignment = Alignment.Top,
                     ) {
+                        // Centred over the left column rather than pinned to the screen edge, so
+                        // it sits above the app list instead of drifting off to the corner.
+                        Box(
+                            modifier = Modifier.fillMaxWidth(0.5f),
+                            contentAlignment = Alignment.TopCenter,
+                        ) {
+                            WeatherWidget(
+                                repository = viewModel.weatherRepository,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                        }
+                        Box(
+                            modifier = Modifier.weight(1f),
+                            contentAlignment = Alignment.TopEnd,
+                        ) {
                         ClockWidget(
                             onClockClick = {
                                 try {
@@ -369,36 +370,27 @@ fun HomeScreen(
                                 } catch (_: Exception) { }
                             },
                         )
-                        if (showNotifBubble) {
-                            NotificationBubble(
-                                notifications = notifications.values.toList(),
-                                resolveAppLabel = { pkg -> appRepository.findAppByPackage(pkg)?.appLabel },
-                                onClickNotification = { pkg ->
-                                    if (!AppLauncher.launch(context, pkg)) context.showToast("App not found")
-                                },
-                                onDismissNotification = { pkg -> NotificationService.dismiss(pkg) },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .padding(end = 16.dp, top = 4.dp)
-                                    .onGloballyPositioned { notifBubbleBounds = it.boundsInRoot() },
-                            )
                         }
                     }
                 }
 
-                // Middle: Favorites (left) + Widgets (right)
+                // Middle: Running apps (left) + Widgets and pinned apps (right)
                 Row(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth(),
                 ) {
-                    // Left: Favorites
+                    // Left: what is open right now
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight(),
                     ) {
-                        // Subtle gradient scrim for readability
+                        // Gradient scrim for readability. Deeper than upstream because this
+                        // column now carries the stats panel too — small text and 3dp meter bars,
+                        // which need more separation from the wallpaper than app labels did.
+                        // Still fades to transparent at both ends so it reads as shading rather
+                        // than a panel drawn over the wallpaper.
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -406,104 +398,60 @@ fun HomeScreen(
                                     Brush.verticalGradient(
                                         colors = listOf(
                                             Color.Transparent,
-                                            Color.Black.copy(alpha = 0.15f),
-                                            Color.Black.copy(alpha = 0.25f),
-                                            Color.Black.copy(alpha = 0.15f),
+                                            Color.Black.copy(alpha = 0.28f),
+                                            Color.Black.copy(alpha = 0.42f),
+                                            Color.Black.copy(alpha = 0.28f),
                                             Color.Transparent,
                                         ),
                                     )
                                 )
                         )
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            if (favorites.isEmpty()) {
-                                Text(
-                                    text = "No favorites yet\nLong-press here to add apps",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = HomeTextColorDim,
-                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        // Two thirds for what is open, one third for what it costs.
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(2f)
+                                    .fillMaxWidth()
+                                    // Only the running-apps rows own horizontal drags — that is
+                                    // where an app is closed. The metrics band below and the clock
+                                    // above stay free, so the swipe to the left page still has a
+                                    // place to begin.
+                                    .onGloballyPositioned { onLeftColumnBounds(it.boundsInRoot()) },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                val runningApps by viewModel.runningApps.collectAsState()
+                                val canClose by viewModel.canCloseRunningApps.collectAsState()
+                                RunningAppsColumn(
+                                    apps = runningApps,
+                                    canClose = canClose,
+                                    onOpen = { app ->
+                                        val launched = AppLauncher.launch(
+                                            context, app.packageName, app.activityClassName, app.userHandle,
+                                        )
+                                        if (!launched) context.showToast(appNotFound)
+                                    },
+                                    onClose = { app -> viewModel.closeRunningApp(app) },
+                                    notifications = notifications,
+                                    showNotifPreview = showNotifPreview,
+                                    showNotifBadge = showNotifBadge,
+                                    onDismissNotification = { pkg -> NotificationService.dismiss(pkg) },
                                 )
                             }
-                            Column(
-                                modifier = Modifier.verticalScroll(rememberScrollState()),
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth(),
+                                contentAlignment = Alignment.Center,
                             ) {
-                                favorites.forEach { favorite ->
-                                    if (favorite.isFolder && favorite.folderId != null) {
-                                        FavoriteItem(
-                                            appInfo = null,
-                                            displayName = favorite.displayName,
-                                            iconEmoji = favorite.iconEmoji,
-                                            isFolder = true,
-                                            onClick = { openFolderId = favorite.folderId },
-                                            onEditFavorites = { showEditFavorites = true },
-                                            onEditFolder = { editingFolderId = favorite.folderId },
-                                            onMoveToPanel = if (panels.size > 1) {
-                                                { movingFavoriteToPanel = favorite }
-                                            } else null,
-                                        )
-                                    } else {
-                                        val appInfo: AppInfo? = remember(favorite.packageName, appList) {
-                                            appRepository.findAppByPackage(favorite.packageName)
-                                        }
-                                        FavoriteItem(
-                                            appInfo = appInfo,
-                                            displayName = favorite.displayName,
-                                            onClick = {
-                                                val launched = AppLauncher.launch(
-                                                    context,
-                                                    favorite.packageName,
-                                                    favorite.activityClassName,
-                                                )
-                                                if (!launched) context.showToast("App not found")
-                                            },
-                                            notification = notifications[favorite.packageName],
-                                            showNotifPreview = showNotifPreview,
-                                            showNotifBadge = showNotifBadge,
-                                            onDismissNotification = { NotificationService.dismiss(favorite.packageName) },
-                                            onEditFavorites = { showEditFavorites = true },
-                                            onMoveToFolder = if (allFolders.isNotEmpty()) {
-                                                { movingFavorite = favorite }
-                                            } else null,
-                                            onMoveToPanel = if (panels.size > 1) {
-                                                { movingFavoriteToPanel = favorite }
-                                            } else null,
-                                            onAppInfo = { context.openAppInfo(favorite.packageName) },
-                                            onUninstall = { context.uninstallApp(favorite.packageName) },
-                                        )
-                                    }
-                                }
-
-                                if (showCoffeeFab) {
-                                    FavoriteItem(
-                                        appInfo = null,
-                                        displayName = "Buy me a coffee",
-                                        iconEmoji = "☕",
-                                        isFolder = true,
-                                        onClick = {
-                                            if (billingState == BillingState.READY) {
-                                                (context as? Activity)?.let {
-                                                    billingManager.launchTipPurchase(it)
-                                                }
-                                            } else {
-                                                context.startActivity(
-                                                    Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://ko-fi.com/ykatchou"))
-                                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                                )
-                                            }
-                                        },
-                                        modifier = Modifier.alpha(0.5f),
-                                    )
-                                }
+                                val stats by viewModel.systemStats.collectAsState()
+                                SystemStatsPanel(stats = stats)
                             }
                         }
                     }
 
-                    // Right: Widgets + Suggested/Recent apps
-                    val suggestedApps by viewModel.suggestedApps.collectAsState()
-                    val recentApps by viewModel.recentApps.collectAsState()
-                    if (homeWidgetIds.isNotEmpty() || suggestedApps.isNotEmpty() || recentApps.isNotEmpty()) {
+                    // Right: Widgets + the pinned quick-apps column
+                    val quickApps by viewModel.quickApps.collectAsState()
+                    if (homeWidgetIds.isNotEmpty() || quickApps.isNotEmpty()) {
                         Column(
                             modifier = Modifier
                                 .fillMaxHeight()
@@ -522,32 +470,37 @@ fun HomeScreen(
                                         .padding(vertical = 4.dp),
                                 )
                             }
-                            val allSuggestedRecent = suggestedApps + recentApps
-                            if (allSuggestedRecent.isNotEmpty()) {
+                            if (quickApps.isNotEmpty()) {
                                 if (homeWidgetIds.isNotEmpty()) Spacer(modifier = Modifier.height(12.dp))
+                                // Frosted-glass strip behind the pinned apps: a low-alpha fill with
+                                // a faint top-to-bottom sheen and a hairline edge, the way Apple's
+                                // panels catch light. Deliberately quiet — no heavy blur, no strong
+                                // tint — so it reads as smoked glass over the wallpaper rather than
+                                // a bright card sitting on top of it.
                                 Column(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalAlignment = Alignment.End,
-                                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                                    modifier = Modifier
+                                        .align(Alignment.End)
+                                        .glass()
+                                        .padding(horizontal = 10.dp, vertical = 14.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(14.dp),
                                 ) {
-                                    allSuggestedRecent.forEach { app ->
-                                        val isSuggested = app in suggestedApps
-                                        val bitmap = remember(app.icon) {
-                                            app.icon?.toBitmap(width = 48, height = 48)?.asImageBitmap()
-                                        }
-                                        if (bitmap != null) {
-                                            Image(
-                                                bitmap = bitmap,
-                                                contentDescription = app.appLabel,
-                                                modifier = Modifier
-                                                    .size(48.dp)
-                                                    .alpha(if (isSuggested) 0.7f else 0.5f)
-                                                    .clickable {
-                                                        val launched = AppLauncher.launch(context, app.packageName, app.activityClassName, app.userHandle)
-                                                        if (!launched) context.showToast("App not found")
-                                                    },
-                                            )
-                                        }
+                                    quickApps.forEach { app ->
+                                        // Pinned apps are a deliberate choice, not a guess, so
+                                        // they draw at full strength — the suggestions this
+                                        // replaced were faded on purpose.
+                                        AppIcon(
+                                            packageName = app.packageName,
+                                            activityClassName = app.activityClassName,
+                                            user = app.userHandle,
+                                            size = 48.dp,
+                                            sizePx = 48,
+                                            contentDescription = app.appLabel,
+                                            modifier = Modifier.clickable {
+                                                val launched = AppLauncher.launch(context, app.packageName, app.activityClassName, app.userHandle)
+                                                if (!launched) context.showToast(appNotFound)
+                                            },
+                                        )
                                     }
                                 }
                             }
@@ -727,12 +680,12 @@ fun HomeScreen(
         ) {
             // Add content
             DropdownMenuItem(
-                text = { Text("Add app") },
+                text = { Text(stringResource(R.string.add_app)) },
                 leadingIcon = { Text("📱") },
                 onClick = { showBackgroundMenu = false; addingAppToFavorites = true },
             )
             DropdownMenuItem(
-                text = { Text("Add folder") },
+                text = { Text(stringResource(R.string.add_folder)) },
                 leadingIcon = { Text("📁") },
                 onClick = {
                     showBackgroundMenu = false
@@ -740,7 +693,7 @@ fun HomeScreen(
                 },
             )
             DropdownMenuItem(
-                text = { Text("Add widget") },
+                text = { Text(stringResource(R.string.add_widget)) },
                 leadingIcon = { Text("🧩") },
                 onClick = {
                     showBackgroundMenu = false
@@ -752,12 +705,12 @@ fun HomeScreen(
 
             // Manage existing content
             DropdownMenuItem(
-                text = { Text("Edit favorites") },
+                text = { Text(stringResource(R.string.edit_favorites)) },
                 leadingIcon = { Text("✏️") },
                 onClick = { showBackgroundMenu = false; showEditFavorites = true },
             )
             DropdownMenuItem(
-                text = { Text("Reimport favorites") },
+                text = { Text(stringResource(R.string.reimport_favorites)) },
                 leadingIcon = { Text("🔄") },
                 onClick = {
                     showBackgroundMenu = false
@@ -770,7 +723,7 @@ fun HomeScreen(
             )
             if (homeWidgetIds.isNotEmpty()) {
                 DropdownMenuItem(
-                    text = { Text("Remove all widgets") },
+                    text = { Text(stringResource(R.string.remove_all_widgets)) },
                     leadingIcon = { Text("🗑️") },
                     onClick = {
                         showBackgroundMenu = false
@@ -779,23 +732,32 @@ fun HomeScreen(
                 )
             }
             DropdownMenuItem(
-                text = { Text("Change wallpaper") },
+                text = { Text(stringResource(R.string.change_wallpaper)) },
                 leadingIcon = { Text("🖼️") },
                 onClick = {
                     showBackgroundMenu = false
+                    // ACTION_SET_WALLPAPER is the one that opens the picker people mean by
+                    // "change wallpaper". The two actions tried before both need arguments that
+                    // were never passed: CHANGE_LIVE_WALLPAPER wants a live-wallpaper component
+                    // in EXTRA_LIVE_WALLPAPER_COMPONENT and lands on an empty preview without it,
+                    // and CROP_AND_SET_WALLPAPER wants an image URI in setData.
                     try {
                         context.startActivity(
-                            Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
-                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            Intent.createChooser(
+                                Intent(Intent.ACTION_SET_WALLPAPER),
+                                chooseWallpaper,
+                            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         )
                     } catch (_: Exception) {
+                        // Falling back to the live-wallpaper list only if no picker handles the
+                        // plain action at all — a stripped ROM, not the normal path.
                         try {
                             context.startActivity(
-                                Intent(WallpaperManager.ACTION_CROP_AND_SET_WALLPAPER)
+                                Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
                                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             )
                         } catch (_: Exception) {
-                            context.showToast("No wallpaper picker found")
+                            context.showToast(noWallpaperPicker)
                         }
                     }
                 },
@@ -805,12 +767,12 @@ fun HomeScreen(
 
             // App-level
             DropdownMenuItem(
-                text = { Text("Settings") },
+                text = { Text(stringResource(R.string.settings)) },
                 leadingIcon = { Text("⚙️") },
                 onClick = { showBackgroundMenu = false; onNavigateToSettings() },
             )
             DropdownMenuItem(
-                text = { Text("About") },
+                text = { Text(stringResource(R.string.about)) },
                 leadingIcon = { Text("ℹ️") },
                 onClick = { showBackgroundMenu = false; onNavigateToAbout() },
             )
@@ -892,7 +854,7 @@ fun HomeScreen(
                 resolveApp = { appRepository.findAppByPackage(it.packageName) },
                 onLaunchApp = { folderApp ->
                     val launched = AppLauncher.launch(context, folderApp.packageName, folderApp.activityClassName)
-                    if (!launched) context.showToast("App not found")
+                    if (!launched) context.showToast(appNotFound)
                     openFolderId = null
                 },
                 onDismissNotification = { pkg -> NotificationService.dismiss(pkg) },
@@ -1011,16 +973,16 @@ fun HomeScreen(
         if (showRemoveAllWidgetsConfirm) {
             AlertDialog(
                 onDismissRequest = { showRemoveAllWidgetsConfirm = false },
-                title = { Text("Remove all widgets?") },
-                text = { Text("This removes every widget from your home screen. You can add them back anytime.") },
+                title = { Text(stringResource(R.string.remove_all_widgets_title)) },
+                text = { Text(stringResource(R.string.remove_all_widgets_body)) },
                 confirmButton = {
                     TextButton(onClick = {
                         showRemoveAllWidgetsConfirm = false
                         viewModel.removeAllWidgets()
-                    }) { Text("Remove", color = MaterialTheme.colorScheme.error) }
+                    }) { Text(stringResource(R.string.remove), color = MaterialTheme.colorScheme.error) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showRemoveAllWidgetsConfirm = false }) { Text("Cancel") }
+                    TextButton(onClick = { showRemoveAllWidgetsConfirm = false }) { Text(stringResource(R.string.cancel)) }
                 },
             )
         }
@@ -1029,39 +991,20 @@ fun HomeScreen(
         usageStatsRationaleAction?.let { action ->
             AlertDialog(
                 onDismissRequest = { usageStatsRationaleAction = null },
-                title = { Text("Show your recommended apps?") },
-                text = { Text("YLauncher can show your last-used and most-recommended apps on the home screen, but needs Usage Access permission to see what you open most.") },
+                title = { Text(stringResource(R.string.usage_access_title)) },
+                text = { Text(stringResource(R.string.usage_access_body)) },
                 confirmButton = {
                     TextButton(onClick = {
                         usageStatsRationaleAction = null
                         action()
-                    }) { Text("Continue") }
+                    }) { Text(stringResource(R.string.continue_action)) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { usageStatsRationaleAction = null }) { Text("Not now") }
+                    TextButton(onClick = { usageStatsRationaleAction = null }) { Text(stringResource(R.string.not_now)) }
                 },
             )
         }
 
-        // Review prompt — only eligible once the tour has been seen
-        if (showReviewDialog) {
-            ReviewPromptDialog(
-                onRateHigh = {
-                    context.openPlayStoreListing()
-                    viewModel.onReviewRateHighConfirmed()
-                    showReviewDialog = false
-                },
-                onSendFeedback = { text ->
-                    context.sendFeedbackEmail(text)
-                    viewModel.onReviewSnoozed()
-                    showReviewDialog = false
-                },
-                onSnooze = {
-                    viewModel.onReviewSnoozed()
-                    showReviewDialog = false
-                },
-            )
-        }
 
         // Center-screen preview of the panel a drag-to-switch gesture is about to land on.
         AnimatedVisibility(

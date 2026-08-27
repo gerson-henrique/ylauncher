@@ -1,5 +1,6 @@
 package com.ykatchou.ylauncher.util
 
+import com.ykatchou.ylauncher.R
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -12,7 +13,7 @@ fun Context.openDialerApp() {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         startActivity(intent)
     } catch (e: Exception) {
-        showToast("No dialer app found")
+        showToast(getString(R.string.no_dialer_app))
     }
 }
 
@@ -23,7 +24,7 @@ fun Context.openCameraApp() {
         }
         startActivity(intent)
     } catch (e: Exception) {
-        showToast("No camera app found")
+        showToast(getString(R.string.no_camera_app))
     }
 }
 
@@ -46,7 +47,7 @@ fun Context.openSearch(query: String? = null) {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         startActivity(intent)
     } catch (e: Exception) {
-        showToast("No browser found")
+        showToast(getString(R.string.no_browser))
     }
 }
 
@@ -57,7 +58,7 @@ fun Context.openAppInfo(packageName: String) {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         startActivity(intent)
     } catch (e: Exception) {
-        showToast("Cannot open app info")
+        showToast(getString(R.string.cannot_open_app_info))
     }
 }
 
@@ -68,7 +69,7 @@ fun Context.uninstallApp(packageName: String) {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         startActivity(intent)
     } catch (e: Exception) {
-        showToast("Cannot uninstall app")
+        showToast(getString(R.string.cannot_uninstall_app))
     }
 }
 
@@ -82,6 +83,6 @@ fun Context.openDefaultLauncherSettings() {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         startActivity(intent)
     } catch (e: Exception) {
-        showToast("Cannot open launcher settings")
+        showToast(getString(R.string.cannot_open_launcher_settings))
     }
 }

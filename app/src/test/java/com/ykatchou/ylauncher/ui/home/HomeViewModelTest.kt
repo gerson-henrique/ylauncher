@@ -79,6 +79,9 @@ class HomeViewModelTest {
             folderDao = folderDao,
             panelDao = panelDao,
             prefsRepository = prefsRepository,
+            runningAppsSource = mockk(relaxed = true),
+            systemStatsReader = mockk(relaxed = true),
+            weatherRepository = mockk(relaxed = true),
             widgetHost = mockk<LauncherWidgetHost>(relaxed = true),
         )
     }
@@ -88,24 +91,6 @@ class HomeViewModelTest {
         unmockkObject(UsageStatsHelper)
     }
 
-    // --- Regression: startup race — icons and right column missing until restart ---
-    // NOTE: The full reactive regression test (proving suggestedApps/recentApps
-    // re-emit when appList changes on real Android dispatchers) lives in the
-    // instrumented test: HomeViewModelStartupRaceTest in androidTest/.
-
-    /**
-     * suggestedApps and recentApps start with emptyList() before refreshApps() completes.
-     * The reactive re-emission test is in HomeViewModelStartupRaceTest (instrumented).
-     */
-    @Test
-    fun `suggestedApps starts with empty list`() {
-        assertEquals(emptyList<AppInfo>(), viewModel.suggestedApps.value)
-    }
-
-    @Test
-    fun `recentApps starts with empty list`() {
-        assertEquals(emptyList<AppInfo>(), viewModel.recentApps.value)
-    }
 
     // --- Favorites basic behaviour ---
 
@@ -170,6 +155,9 @@ class HomeViewModelTest {
                 // hasSeenOnboardingTour intentionally never emits, to simulate the pre-DataStore-load window
                 every { hasSeenOnboardingTour } returns kotlinx.coroutines.flow.emptyFlow()
             },
+            runningAppsSource = mockk(relaxed = true),
+            systemStatsReader = mockk(relaxed = true),
+            weatherRepository = mockk(relaxed = true),
             widgetHost = mockk(relaxed = true),
         )
         assertEquals(null, freshViewModel.hasSeenOnboardingTour.value)
