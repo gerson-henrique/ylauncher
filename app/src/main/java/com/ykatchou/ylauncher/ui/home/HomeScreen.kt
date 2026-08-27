@@ -132,6 +132,10 @@ fun HomeScreen(
     onWidgetSelected: (ComponentName) -> Unit,
     onWidgetPickerDismiss: () -> Unit,
     appRepository: AppRepository,
+    // Lets the pager above learn where the running-apps column sits, so a horizontal drag that
+    // starts inside it closes an app instead of flipping the page. Default no-op keeps HomeScreen
+    // usable outside the cockpit.
+    onLeftColumnBounds: (androidx.compose.ui.geometry.Rect) -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
@@ -377,7 +381,8 @@ fun HomeScreen(
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .fillMaxHeight(),
+                            .fillMaxHeight()
+                            .onGloballyPositioned { onLeftColumnBounds(it.boundsInRoot()) },
                     ) {
                         // Gradient scrim for readability. Deeper than upstream because this
                         // column now carries the stats panel too — small text and 3dp meter bars,

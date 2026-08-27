@@ -1,25 +1,34 @@
 package com.ykatchou.ylauncher.ui.cockpit
 
 import android.content.ComponentName
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PageSize
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import com.ykatchou.ylauncher.data.repository.AppRepository
 import com.ykatchou.ylauncher.ui.home.HomeScreen
 
 /**
  * The three-page cockpit. The launcher is the control surface, not the engine: this is only the
  * navigation shell. The home is the centre and the start page — everything the launcher already
- * is lives at [PAGE_HOME]. The orchestrator and the Claude executor flank it, and stay empty
- * placeholders until their own phases land.
+ * is lives untouched at [PAGE_HOME]. The orchestrator and the Claude executor flank it, and stay
+ * empty placeholders until their own phases land.
  *
  * A real page's work — the Dell websocket, the Claude loop — must only run while its page is
  * settled, so the home keeps the memory and CPU budget we spent the day earning. The placeholders
- * cost nothing, so that guarantee holds trivially for now; each real page will gate its
- * connections on being the current page when it arrives.
+ * cost nothing, so that guarantee holds trivially for now.
  */
 @Composable
 fun CockpitPager(
@@ -32,24 +41,45 @@ fun CockpitPager(
 ) {
     val pagerState = rememberPagerState(initialPage = PAGE_HOME) { PAGE_COUNT }
 
-    HorizontalPager(
-        state = pagerState,
-        pageSize = PageSize.Fill,
-        // One page each side keeps the swipe instant without holding all three alive at once.
-        beyondViewportPageCount = 1,
-        modifier = Modifier.fillMaxSize(),
-    ) { page ->
-        when (page) {
-            PAGE_ORCHESTRATOR -> PlaceholderPage("Orquestrador", "controle do Dell — em breve")
-            PAGE_HOME -> HomeScreen(
-                onNavigateToAbout = onNavigateToAbout,
-                onNavigateToSettings = onNavigateToSettings,
-                onRequestWidgetPicker = onRequestWidgetPicker,
-                onWidgetSelected = onWidgetSelected,
-                onWidgetPickerDismiss = onWidgetPickerDismiss,
-                appRepository = appRepository,
-            )
-            PAGE_CLAUDE -> PlaceholderPage("Claude", "executor via Shizuku — em breve")
+    // Where the home's running-apps column sits, and whether the pager should yield to it.
+    var leftColumnBounds by remember { mutableStateOf<Rect?>(null) }
+    var pagerSwipeEnabled by remember { mutableStateOf(true) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            // Watch the down event before the pager's own gesture detector reads it. Touch-slop
+            // needs several move events to arm, so flipping userScrollEnabled here — on the down,
+            // in the Initial pass, without consuming — settles before the pager would start
+            // scrolling. A drag beginning inside the column closes an app; anywhere else pages.
+            .pointerInput(leftColumnBounds) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    val bounds = leftColumnBounds
+                    pagerSwipeEnabled = bounds == null || !bounds.contains(down.position)
+                }
+            },
+    ) {
+        HorizontalPager(
+            state = pagerState,
+            pageSize = PageSize.Fill,
+            userScrollEnabled = pagerSwipeEnabled,
+            beyondViewportPageCount = 1,
+            modifier = Modifier.fillMaxSize(),
+        ) { page ->
+            when (page) {
+                PAGE_ORCHESTRATOR -> PlaceholderPage("Orquestrador", "controle do Dell — em breve")
+                PAGE_HOME -> HomeScreen(
+                    onNavigateToAbout = onNavigateToAbout,
+                    onNavigateToSettings = onNavigateToSettings,
+                    onRequestWidgetPicker = onRequestWidgetPicker,
+                    onWidgetSelected = onWidgetSelected,
+                    onWidgetPickerDismiss = onWidgetPickerDismiss,
+                    appRepository = appRepository,
+                    onLeftColumnBounds = { leftColumnBounds = it },
+                )
+                PAGE_CLAUDE -> PlaceholderPage("Claude", "executor via Shizuku — em breve")
+            }
         }
     }
 }
