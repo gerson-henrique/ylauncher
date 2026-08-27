@@ -9,6 +9,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PageSize
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,6 +41,15 @@ fun CockpitPager(
     appRepository: AppRepository,
 ) {
     val pagerState = rememberPagerState(initialPage = PAGE_HOME) { PAGE_COUNT }
+
+    // Pressing Home always returns to the centre. The side pages are somewhere you go on purpose;
+    // the home is the resting place, so the Home key brings it back rather than leaving you parked
+    // on the orchestrator or Claude. Reuses the same signal the drawer already listens to.
+    LaunchedEffect(pagerState) {
+        com.ykatchou.ylauncher.MainActivity.homePressed.collect {
+            if (pagerState.currentPage != PAGE_HOME) pagerState.animateScrollToPage(PAGE_HOME)
+        }
+    }
 
     // Where the home's running-apps column sits, and whether the pager should yield to it.
     var leftColumnBounds by remember { mutableStateOf<Rect?>(null) }

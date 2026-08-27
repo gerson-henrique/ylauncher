@@ -15,6 +15,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -62,6 +63,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -469,10 +471,32 @@ fun HomeScreen(
                             }
                             if (quickApps.isNotEmpty()) {
                                 if (homeWidgetIds.isNotEmpty()) Spacer(modifier = Modifier.height(12.dp))
+                                // Frosted-glass strip behind the pinned apps: a low-alpha fill with
+                                // a faint top-to-bottom sheen and a hairline edge, the way Apple's
+                                // panels catch light. Deliberately quiet — no heavy blur, no strong
+                                // tint — so it reads as smoked glass over the wallpaper rather than
+                                // a bright card sitting on top of it.
                                 Column(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalAlignment = Alignment.End,
-                                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                                    modifier = Modifier
+                                        .align(Alignment.End)
+                                        .clip(RoundedCornerShape(26.dp))
+                                        .background(
+                                            Brush.verticalGradient(
+                                                colors = listOf(
+                                                    Color.White.copy(alpha = 0.10f),
+                                                    Color.White.copy(alpha = 0.045f),
+                                                    Color.White.copy(alpha = 0.08f),
+                                                ),
+                                            )
+                                        )
+                                        .border(
+                                            width = 0.8.dp,
+                                            color = Color.White.copy(alpha = 0.14f),
+                                            shape = RoundedCornerShape(26.dp),
+                                        )
+                                        .padding(horizontal = 10.dp, vertical = 14.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(14.dp),
                                 ) {
                                     quickApps.forEach { app ->
                                         // Pinned apps are a deliberate choice, not a guess, so
