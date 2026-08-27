@@ -430,9 +430,10 @@ fun HomeScreen(
                                 contentAlignment = Alignment.Center,
                             ) {
                                 val runningApps by viewModel.runningApps.collectAsState()
+                                val canClose by viewModel.canCloseRunningApps.collectAsState()
                                 RunningAppsColumn(
                                     apps = runningApps,
-                                    canClose = viewModel.canCloseRunningApps,
+                                    canClose = canClose,
                                     onOpen = { app ->
                                         val launched = AppLauncher.launch(
                                             context, app.packageName, app.activityClassName, app.userHandle,

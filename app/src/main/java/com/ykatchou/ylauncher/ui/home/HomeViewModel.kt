@@ -126,8 +126,18 @@ class HomeViewModel @Inject constructor(
     }.flowOn(Dispatchers.IO)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    /** Whether the running-apps column should offer drag-to-close at all. */
-    val canCloseRunningApps: Boolean get() = runningAppsSource.canClose
+    /**
+     * Whether the running-apps column should offer drag-to-close.
+     *
+     * A StateFlow, not a getter. As a getter this was read on every recomposition of the home
+     * screen, and the chain behind it ends in Shizuku.pingBinder() — a binder call, on the main
+     * thread, many times a second. With Shizuku up it answers fast enough to hide the mistake;
+     * with Shizuku down, which is every boot, each read reaches for a service that is not there.
+     */
+    val canCloseRunningApps: StateFlow<Boolean> = _usageStatsVersion
+        .map { runningAppsSource.canClose }
+        .flowOn(Dispatchers.IO)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     /**
      * Live readings for the panel under the running-apps column. Polled rather than pushed,

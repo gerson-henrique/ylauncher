@@ -17,12 +17,33 @@ object ShizukuShell {
 
     private const val TAG = "ShizukuShell"
 
-    /** Whether Shizuku is present, running, and has granted us permission. */
-    fun isReady(): Boolean = try {
-        Shizuku.pingBinder() && Shizuku.checkSelfPermission() == android.content.pm.PackageManager.PERMISSION_GRANTED
-    } catch (_: Throwable) {
-        // Shizuku not installed at all — its classes resolve but the binder never appears.
-        false
+    /** Long enough to keep it out of hot paths, short enough to notice Shizuku coming up. */
+    private const val READY_CACHE_MS = 2000L
+
+    @Volatile private var readyCache: Boolean? = null
+    @Volatile private var readyCheckedAt = 0L
+
+    /**
+     * Whether Shizuku is present, running, and has granted us permission.
+     *
+     * Cached briefly because this crosses a binder, and callers ask often — the answer changes
+     * only when the service starts or stops, which is not something that happens between two
+     * frames. Without the cache a caller in a hot path turns every check into an IPC, and when
+     * Shizuku is down each one reaches for a service that is not there.
+     */
+    fun isReady(): Boolean {
+        val now = System.currentTimeMillis()
+        readyCache?.let { if (now - readyCheckedAt < READY_CACHE_MS) return it }
+        val result = try {
+            Shizuku.pingBinder() &&
+                Shizuku.checkSelfPermission() == android.content.pm.PackageManager.PERMISSION_GRANTED
+        } catch (_: Throwable) {
+            // Shizuku not installed at all — its classes resolve but the binder never appears.
+            false
+        }
+        readyCache = result
+        readyCheckedAt = now
+        return result
     }
 
     /** True when Shizuku is up but has not been asked for permission yet. */
