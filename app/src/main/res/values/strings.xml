@@ -42,7 +42,6 @@
     <string name="hide">Hide</string>
 
     <!-- Drawer -->
-    <string name="launching">Launching %1$s…</string>
 
     <!-- Errors -->
     <string name="app_not_found">App not found</string>

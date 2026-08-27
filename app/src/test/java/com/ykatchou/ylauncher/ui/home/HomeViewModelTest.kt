@@ -91,24 +91,6 @@ class HomeViewModelTest {
         unmockkObject(UsageStatsHelper)
     }
 
-    // --- Regression: startup race — icons and right column missing until restart ---
-    // NOTE: The full reactive regression test (proving suggestedApps/recentApps
-    // re-emit when appList changes on real Android dispatchers) lives in the
-    // instrumented test: HomeViewModelStartupRaceTest in androidTest/.
-
-    /**
-     * suggestedApps and recentApps start with emptyList() before refreshApps() completes.
-     * The reactive re-emission test is in HomeViewModelStartupRaceTest (instrumented).
-     */
-    @Test
-    fun `suggestedApps starts with empty list`() {
-        assertEquals(emptyList<AppInfo>(), viewModel.suggestedApps.value)
-    }
-
-    @Test
-    fun `recentApps starts with empty list`() {
-        assertEquals(emptyList<AppInfo>(), viewModel.recentApps.value)
-    }
 
     // --- Favorites basic behaviour ---
 

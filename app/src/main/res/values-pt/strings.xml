@@ -40,7 +40,6 @@
     <string name="hide">Ocultar</string>
 
     <!-- Gaveta de apps -->
-    <string name="launching">Abrindo %1$s…</string>
 
     <!-- Erros -->
     <string name="app_not_found">App não encontrado</string>

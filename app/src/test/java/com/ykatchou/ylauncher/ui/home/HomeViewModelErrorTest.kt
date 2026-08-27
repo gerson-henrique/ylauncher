@@ -105,7 +105,9 @@ class HomeViewModelErrorTest {
 
         val viewModel = buildViewModel()
 
-        assertEquals(emptyList<Any>(), viewModel.suggestedApps.value)
+        // The flow it used to assert on is gone; what matters is that the view model
+        // survives the failure at all rather than taking the launcher down with it.
+        assertEquals(emptyList<Any>(), viewModel.favorites.value)
     }
 
     @Test

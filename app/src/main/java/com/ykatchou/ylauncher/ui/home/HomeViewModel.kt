@@ -97,34 +97,7 @@ class HomeViewModel @Inject constructor(
         favs.filter { it.panelId == panel }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val suggestedApps: StateFlow<List<AppInfo>> = combine(
-        allFavorites,
-        prefsRepository.suggestionCount,
-        appRepository.appList,
-        _usageStatsVersion,
-    ) { favs, count, _, _ ->
-        if (count == 0) return@combine emptyList()
-        val favPackages = favs.map { it.packageName }.toSet()
-        val topApps = UsageStatsHelper.getTopApps(context, appRepository, count = count + 10)
-        topApps.filter { it.packageName !in favPackages }.take(count)
-    }.flowOn(Dispatchers.IO)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val recentApps: StateFlow<List<AppInfo>> = combine(
-        allFavorites,
-        prefsRepository.recentAppsCount,
-        suggestedApps,
-        _usageStatsVersion,
-    ) { favs, recentCount, suggested, _ ->
-        if (recentCount == 0) return@combine emptyList()
-        val favPackages = favs.map { it.packageName }.toSet()
-        val suggestedPackages = suggested.map { it.packageName }.toSet()
-        UsageStatsHelper.getRecentApps(
-            context, appRepository, count = recentCount,
-            excludePackages = favPackages + suggestedPackages,
-        )
-    }.flowOn(Dispatchers.IO)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /**
      * Whether the running-apps column should offer drag-to-close.

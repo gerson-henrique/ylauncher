@@ -21,7 +21,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
@@ -82,8 +81,6 @@ fun SettingsScreen(
     val swipeLeftName by prefsRepository.swipeLeftName.collectAsState(initial = "Camera")
     val swipeRightName by prefsRepository.swipeRightName.collectAsState(initial = "Phone")
     val textSizeScale by prefsRepository.textSizeScale.collectAsState(initial = 1f)
-    val suggestionCount by prefsRepository.suggestionCount.collectAsState(initial = 3)
-    val recentAppsCount by prefsRepository.recentAppsCount.collectAsState(initial = 0)
     val panels by panelDao.getAllPanels().collectAsState(initial = emptyList())
     val autoLaunchDelay by prefsRepository.autoLaunchDelay.collectAsState(initial = 0f)
     val showNotifBubble by prefsRepository.showNotifBubble.collectAsState(initial = true)
@@ -119,8 +116,6 @@ fun SettingsScreen(
 
     // Local state for sliders to avoid excessive DataStore writes during drag
     var sliderValue by remember(textSizeScale) { mutableFloatStateOf(textSizeScale) }
-    var suggestionSlider by remember(suggestionCount) { mutableFloatStateOf(suggestionCount.toFloat()) }
-    var recentSlider by remember(recentAppsCount) { mutableFloatStateOf(recentAppsCount.toFloat()) }
     var autoLaunchDelaySlider by remember(autoLaunchDelay) { mutableFloatStateOf(autoLaunchDelay) }
 
     Surface(
