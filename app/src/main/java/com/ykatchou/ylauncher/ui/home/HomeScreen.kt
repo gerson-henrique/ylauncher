@@ -83,13 +83,10 @@ import com.ykatchou.ylauncher.data.model.AppInfo
 import com.ykatchou.ylauncher.data.model.FavoriteApp
 import com.ykatchou.ylauncher.data.repository.AppRepository
 import com.ykatchou.ylauncher.service.NotificationService
-import com.ykatchou.ylauncher.billing.BillingManager
-import com.ykatchou.ylauncher.billing.BillingState
 import com.ykatchou.ylauncher.ui.components.AllAppsButton
 import com.ykatchou.ylauncher.ui.components.AppWidgetContainer
 import com.ykatchou.ylauncher.ui.components.ClockWidget
 import com.ykatchou.ylauncher.ui.components.WeatherWidget
-import com.ykatchou.ylauncher.ui.components.ReviewPromptDialog
 import com.ykatchou.ylauncher.ui.components.WidgetPickerDialog
 import com.ykatchou.ylauncher.ui.drawer.AppDrawerScreen
 import com.ykatchou.ylauncher.ui.hal.HalAction
@@ -100,14 +97,10 @@ import com.ykatchou.ylauncher.ui.theme.HomeTextColor
 import com.ykatchou.ylauncher.ui.theme.HomeTextColorDim
 import com.ykatchou.ylauncher.ui.theme.WallpaperTextShadow
 import com.ykatchou.ylauncher.util.AppLauncher
-import com.ykatchou.ylauncher.util.ONE_WEEK_MS
 import com.ykatchou.ylauncher.util.expandNotificationDrawer
 import com.ykatchou.ylauncher.util.openAppInfo
 import com.ykatchou.ylauncher.util.openCameraApp
 import com.ykatchou.ylauncher.util.openDialerApp
-import com.ykatchou.ylauncher.util.openPlayStoreListing
-import com.ykatchou.ylauncher.util.sendFeedbackEmail
-import com.ykatchou.ylauncher.util.shouldShowReviewPrompt
 import com.ykatchou.ylauncher.util.showToast
 import com.ykatchou.ylauncher.util.uninstallApp
 import androidx.compose.ui.graphics.asImageBitmap
@@ -138,7 +131,6 @@ fun HomeScreen(
     onWidgetSelected: (ComponentName) -> Unit,
     onWidgetPickerDismiss: () -> Unit,
     appRepository: AppRepository,
-    billingManager: BillingManager,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
@@ -163,7 +155,6 @@ fun HomeScreen(
     val showClock = homePrefs.showClock
     val showNotifPreview = homePrefs.showNotifPreview
     val showNotifBadge = homePrefs.showNotifBadge
-    val showDonation = homePrefs.showDonation
     val firstLaunchTimestamp = homePrefs.firstLaunchTimestamp
     val swipeLeftEnabled = homePrefs.swipeLeftEnabled
     val swipeRightEnabled = homePrefs.swipeRightEnabled
@@ -174,18 +165,8 @@ fun HomeScreen(
     val halAssistantPackage = homePrefs.halAssistantPackage
     val reviewNeverAsk = homePrefs.reviewNeverAsk
     val reviewSnoozedUntil = homePrefs.reviewSnoozedUntil
-    val billingState by billingManager.billingState.collectAsState()
-    val showCoffeeFab = showDonation && firstLaunchTimestamp > 0L &&
-        (System.currentTimeMillis() - firstLaunchTimestamp) >= ONE_WEEK_MS
     val showWidgetPicker by com.ykatchou.ylauncher.MainActivity.showWidgetPicker.collectAsState()
     val hasSeenOnboardingTour by viewModel.hasSeenOnboardingTour.collectAsState()
-    val isReviewPromptEligible = shouldShowReviewPrompt(
-        hasSeenOnboardingTour = hasSeenOnboardingTour == true,
-        reviewNeverAsk = reviewNeverAsk,
-        firstLaunchTimestamp = firstLaunchTimestamp,
-        reviewSnoozedUntil = reviewSnoozedUntil,
-        now = System.currentTimeMillis(),
-    )
 
     // Ensure notification listener is connected and seeded
     LaunchedEffect(Unit) {
@@ -209,10 +190,6 @@ fun HomeScreen(
         }
     }
 
-    var showReviewDialog by remember { mutableStateOf(false) }
-    LaunchedEffect(isReviewPromptEligible) {
-        if (isReviewPromptEligible) showReviewDialog = true
-    }
 
     // Refresh usage stats every time the home screen resumes (after switching apps, closing app menu, etc.)
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -1009,25 +986,6 @@ fun HomeScreen(
             )
         }
 
-        // Review prompt — only eligible once the tour has been seen
-        if (showReviewDialog) {
-            ReviewPromptDialog(
-                onRateHigh = {
-                    context.openPlayStoreListing()
-                    viewModel.onReviewRateHighConfirmed()
-                    showReviewDialog = false
-                },
-                onSendFeedback = { text ->
-                    context.sendFeedbackEmail(text)
-                    viewModel.onReviewSnoozed()
-                    showReviewDialog = false
-                },
-                onSnooze = {
-                    viewModel.onReviewSnoozed()
-                    showReviewDialog = false
-                },
-            )
-        }
 
         // Center-screen preview of the panel a drag-to-switch gesture is about to land on.
         AnimatedVisibility(

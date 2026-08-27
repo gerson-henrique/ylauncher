@@ -15,7 +15,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import com.ykatchou.ylauncher.billing.BillingManager
 import com.ykatchou.ylauncher.data.db.PanelDao
 import com.ykatchou.ylauncher.data.repository.AppRepository
 import com.ykatchou.ylauncher.data.running.ShizukuShell
@@ -40,7 +39,6 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
 
     @Inject lateinit var appRepository: AppRepository
-    @Inject lateinit var billingManager: BillingManager
     @Inject lateinit var prefsRepository: PrefsRepository
     @Inject lateinit var widgetHost: LauncherWidgetHost
     @Inject lateinit var panelDao: PanelDao
@@ -97,7 +95,6 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        billingManager.initialize()
         requestShizukuIfAvailable()
         enableEdgeToEdge()
         setContent {
@@ -118,12 +115,10 @@ class MainActivity : ComponentActivity() {
                             onWidgetSelected = { provider -> bindAndConfigureWidget(provider) },
                             onWidgetPickerDismiss = { _showWidgetPicker.value = false },
                             appRepository = appRepository,
-                            billingManager = billingManager,
                         )
                     }
                     composable("about") {
                         AboutScreen(
-                            billingManager = billingManager,
                             prefsRepository = prefsRepository,
                             onBack = { navController.popBackStack() },
                         )
@@ -132,7 +127,6 @@ class MainActivity : ComponentActivity() {
                         SettingsScreen(
                             prefsRepository = prefsRepository,
                             appRepository = appRepository,
-                            billingManager = billingManager,
                             panelDao = panelDao,
                             configBackupRepository = configBackupRepository,
                             onBack = { navController.popBackStack() },
@@ -155,7 +149,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        billingManager.destroy()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {

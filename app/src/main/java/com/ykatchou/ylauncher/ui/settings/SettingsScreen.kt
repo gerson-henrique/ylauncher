@@ -41,15 +41,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.ykatchou.ylauncher.billing.BillingManager
 import com.ykatchou.ylauncher.data.db.PanelDao
 import com.ykatchou.ylauncher.data.model.AppInfo
 import com.ykatchou.ylauncher.data.model.Panel
 import com.ykatchou.ylauncher.data.repository.AppRepository
 import com.ykatchou.ylauncher.data.repository.ConfigBackupRepository
 import com.ykatchou.ylauncher.data.repository.PrefsRepository
-import com.ykatchou.ylauncher.ui.components.CoffeeFab
-import com.ykatchou.ylauncher.ui.components.RateFab
 import com.ykatchou.ylauncher.ui.hal.HalAction
 import com.ykatchou.ylauncher.ui.home.EditPanelsDialog
 import com.ykatchou.ylauncher.util.AppIconCache
@@ -64,7 +61,6 @@ import kotlin.math.roundToInt
 fun SettingsScreen(
     prefsRepository: PrefsRepository,
     appRepository: AppRepository,
-    billingManager: BillingManager,
     panelDao: PanelDao,
     configBackupRepository: ConfigBackupRepository,
     onBack: () -> Unit,
@@ -87,7 +83,6 @@ fun SettingsScreen(
     val showNotifPreview by prefsRepository.showNotifPreview.collectAsState(initial = true)
     val showNotifBadge by prefsRepository.showNotifBadge.collectAsState(initial = true)
     val showDonation by prefsRepository.showDonation.collectAsState(initial = true)
-    val billingState by billingManager.billingState.collectAsState()
     val activePanel by prefsRepository.activePanel.collectAsState(initial = 0L)
     val halTap by prefsRepository.halTapAction.collectAsState(initial = PrefsRepository.DEFAULT_HAL_TAP_ACTION)
     val halLongPress by prefsRepository.halLongPressAction.collectAsState(initial = "SETTINGS")
@@ -338,18 +333,6 @@ fun SettingsScreen(
                 onCheckedChange = { scope.launch { prefsRepository.setShowDonation(it) } },
             )
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
-            ) {
-                CoffeeFab(
-                    billingManager = billingManager,
-                    billingState = billingState,
-                )
-                RateFab()
-            }
 
             Spacer(modifier = Modifier.height(16.dp))
             HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f))

@@ -8,7 +8,6 @@ lifecycle = "2.8.7"
 navigationCompose = "2.8.5"
 composeBom = "2024.12.01"
 room = "2.6.1"
-billing = "8.3.0"
 datastore = "1.1.2"
 shizuku = "13.1.5"
 hilt = "2.53.1"
@@ -44,7 +43,6 @@ room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 room-testing = { group = "androidx.room", name = "room-testing", version.ref = "room" }
 
-billing-ktx = { group = "com.android.billingclient", name = "billing-ktx", version.ref = "billing" }
 shizuku-api = { group = "dev.rikka.shizuku", name = "api", version.ref = "shizuku" }
 shizuku-provider = { group = "dev.rikka.shizuku", name = "provider", version.ref = "shizuku" }
 
