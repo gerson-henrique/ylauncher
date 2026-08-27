@@ -44,6 +44,19 @@ class RecentTasksParserTest {
     }
 
     @Test
+    fun `hides infrastructure packages — keyboard, shizuku, launchers`() {
+        val dumpWithInfra = """
+            Recent tasks:
+              * Recent #0: Task{a1 #100 type=standard A=10001:helium314.keyboard}
+              * Recent #1: Task{a2 #101 type=standard A=10002:moe.shizuku.privileged.api}
+              * Recent #2: Task{a3 #102 type=standard A=10003:com.ykatchou.ylauncher}
+              * Recent #3: Task{a4 #103 type=standard A=10004:com.whatsapp}
+        """.trimIndent()
+        // Only the real app survives; the keyboard, Shizuku and the launcher itself are plumbing.
+        assertEquals(listOf("com.whatsapp"), RecentTasksParser.packages(dumpWithInfra))
+    }
+
+    @Test
     fun `survives empty output rather than throwing`() {
         assertEquals(emptyList<String>(), RecentTasksParser.packages(""))
         assertNull(RecentTasksParser.taskIdOf("", "com.whatsapp"))

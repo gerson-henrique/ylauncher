@@ -52,15 +52,7 @@ class UsageStatsRunningApps @Inject constructor(
 
     override suspend fun close(app: AppInfo) = false
 
-    private val excludedPackages: Set<String>
-        get() = setOf(
-            // Showing ourselves would be noise — the launcher is always "running".
-            context.packageName,
-            // The stock launcher still runs here because it provides the system's gesture
-            // handler, but it is not an app the user opened.
-            "com.blackview.launcher",
-            "com.android.launcher3",
-        )
+    private val excludedPackages: Set<String> get() = InfrastructurePackages.ALL
 
     private companion object {
         /** Anything untouched for longer than this has stopped being "what I have open". */

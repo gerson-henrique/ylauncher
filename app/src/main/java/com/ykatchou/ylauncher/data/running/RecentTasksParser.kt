@@ -28,6 +28,7 @@ object RecentTasksParser {
         recentLines(dump)
             .filter { TYPE_STANDARD in it }
             .mapNotNull { PACKAGE_IN_TASK.find(it)?.groupValues?.get(1) }
+            .filter { it !in InfrastructurePackages.ALL }
             .distinct()
             .toList()
 
