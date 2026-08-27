@@ -45,6 +45,7 @@ import com.ykatchou.ylauncher.data.model.AppNotification
 import com.ykatchou.ylauncher.ui.theme.HomeTextColor
 import com.ykatchou.ylauncher.ui.theme.HomeTextColorDim
 import com.ykatchou.ylauncher.ui.theme.WallpaperTextShadow
+import com.ykatchou.ylauncher.ui.theme.Y
 import kotlinx.coroutines.delay
 
 private val wallpaperShadow = WallpaperTextShadow
@@ -145,14 +146,14 @@ fun FavoriteItem(
                             fontWeight = FontWeight.Bold,
                             shadow = null,
                         ),
-                        color = Color.White,
+                        color = Y.onAccent,
                         textAlign = TextAlign.Center,
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .offset(x = 4.dp, y = (-4).dp)
                             .defaultMinSize(minWidth = 18.dp, minHeight = 18.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFFE53935))
+                            .background(Y.accent)
                             .padding(horizontal = 4.dp, vertical = 1.dp),
                     )
                 }
