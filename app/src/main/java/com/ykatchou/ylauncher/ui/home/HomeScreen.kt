@@ -99,6 +99,7 @@ import com.ykatchou.ylauncher.ui.onboarding.OnboardingTourOverlay
 import com.ykatchou.ylauncher.ui.theme.HomeTextColor
 import com.ykatchou.ylauncher.ui.theme.HomeTextColorDim
 import com.ykatchou.ylauncher.ui.theme.WallpaperTextShadow
+import com.ykatchou.ylauncher.ui.theme.glass
 import com.ykatchou.ylauncher.util.AppLauncher
 import com.ykatchou.ylauncher.util.expandNotificationDrawer
 import com.ykatchou.ylauncher.util.openAppInfo
@@ -479,21 +480,7 @@ fun HomeScreen(
                                 Column(
                                     modifier = Modifier
                                         .align(Alignment.End)
-                                        .clip(RoundedCornerShape(26.dp))
-                                        .background(
-                                            Brush.verticalGradient(
-                                                colors = listOf(
-                                                    Color.White.copy(alpha = 0.10f),
-                                                    Color.White.copy(alpha = 0.045f),
-                                                    Color.White.copy(alpha = 0.08f),
-                                                ),
-                                            )
-                                        )
-                                        .border(
-                                            width = 0.8.dp,
-                                            color = Color.White.copy(alpha = 0.14f),
-                                            shape = RoundedCornerShape(26.dp),
-                                        )
+                                        .glass()
                                         .padding(horizontal = 10.dp, vertical = 14.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.spacedBy(14.dp),
