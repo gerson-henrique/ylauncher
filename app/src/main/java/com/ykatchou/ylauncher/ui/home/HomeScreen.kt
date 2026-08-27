@@ -381,8 +381,7 @@ fun HomeScreen(
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .fillMaxHeight()
-                            .onGloballyPositioned { onLeftColumnBounds(it.boundsInRoot()) },
+                            .fillMaxHeight(),
                     ) {
                         // Gradient scrim for readability. Deeper than upstream because this
                         // column now carries the stats panel too — small text and 3dp meter bars,
@@ -409,7 +408,12 @@ fun HomeScreen(
                             Box(
                                 modifier = Modifier
                                     .weight(2f)
-                                    .fillMaxWidth(),
+                                    .fillMaxWidth()
+                                    // Only the running-apps rows own horizontal drags — that is
+                                    // where an app is closed. The metrics band below and the clock
+                                    // above stay free, so the swipe to the left page still has a
+                                    // place to begin.
+                                    .onGloballyPositioned { onLeftColumnBounds(it.boundsInRoot()) },
                                 contentAlignment = Alignment.Center,
                             ) {
                                 val runningApps by viewModel.runningApps.collectAsState()
