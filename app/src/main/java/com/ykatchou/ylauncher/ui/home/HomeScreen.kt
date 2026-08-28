@@ -343,7 +343,13 @@ fun HomeScreen(
                         }
                         // Temperature stacked above the clock, both centred on the same axis.
                         Column(
-                            modifier = Modifier.weight(1f).padding(end = 20.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                // Same vertical scrim as the left column — glass colour, fading
+                                // only at the extremes — so the clock and weather stay legible over
+                                // a light wallpaper and both columns read as one language.
+                                .background(com.ykatchou.ylauncher.ui.theme.Y.scrim)
+                                .padding(end = 20.dp),
                             horizontalAlignment = Alignment.End,
                         ) {
                         WeatherWidget(
