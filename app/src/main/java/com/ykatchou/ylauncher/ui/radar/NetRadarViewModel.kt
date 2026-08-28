@@ -2,6 +2,7 @@ package com.ykatchou.ylauncher.ui.radar
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ykatchou.ylauncher.data.net.IpOwner
 import com.ykatchou.ylauncher.data.net.NetRadarSource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -23,11 +24,12 @@ data class RadarLine(
     val remote: String,
     val port: Int,
     val proto: String,
+    val owner: String?,   // Google / Meta / … when the IP is recognised, else null
     val atMs: Long,
     val fresh: Boolean,   // just appeared — gets the pulse
 )
 
-data class RadarSummary(val callsPerMin: Int, val activeConns: Int, val topApp: String)
+data class RadarSummary(val bytesPerSec: Long, val appsOnNet: Int, val topOrg: String)
 
 /**
  * Polls the socket tables while the page is on screen, and turns each *new* connection into a line
@@ -57,7 +59,10 @@ class NetRadarViewModel @Inject constructor(
     private var firstDone = false
     private var nextId = 0L
     private val eventTimes = ArrayDeque<Long>()  // for calls/min
-    private val myUid = android.os.Process.myUid()  // exclude ourselves from "top talker"
+    private val myUid = android.os.Process.myUid()
+    private var lastRx = 0L
+    private var lastTx = 0L
+    private var lastNetMs = 0L
 
     fun setActive(active: Boolean) {
         if (active) start() else stop()
@@ -108,6 +113,7 @@ class NetRadarViewModel @Inject constructor(
                     remote = c.remoteIp,
                     port = c.remotePort,
                     proto = c.proto,
+                    owner = IpOwner.ownerOf(c.remoteIp),
                     atMs = now,
                     fresh = firstDone,   // the opening burst is not a pulse; later arrivals are
                 )
@@ -117,18 +123,27 @@ class NetRadarViewModel @Inject constructor(
         }
         firstDone = true
 
-        val cutoff = now - 60_000
-        while (eventTimes.isNotEmpty() && eventTimes.first() < cutoff) eventTimes.removeFirst()
+        // Useful summary, not activity noise: how much data is moving, how many apps are on the
+        // network, and which owner it concentrates on. Bytes matter more than socket counts.
+        val bytesPerSec = throughput(now)
+        val appsOnNet = snap.filter { it.uid >= 10000 }.map { it.uid }.distinct().size
+        val topOrg = snap.mapNotNull { IpOwner.ownerOf(it.remoteIp) }
+            .filter { it != "rede local" }
+            .groupingBy { it }.eachCount().maxByOrNull { it.value }?.key ?: "—"
+        _summary.value = RadarSummary(bytesPerSec, appsOnNet, topOrg)
+    }
 
-        // "Top talker" only over real apps — otherwise the system catch-all bucket wins trivially
-        // and names nothing useful; and the user doesn't care that we ourselves opened a socket.
-        val top = snap.filter { it.uid >= 10000 && it.uid != myUid }
-            .groupingBy { it.uid }.eachCount().maxByOrNull { it.value }?.key
-        _summary.value = RadarSummary(
-            callsPerMin = eventTimes.size,
-            activeConns = snap.size,
-            topApp = top?.let { source.appLabel(it) } ?: "—",
-        )
+    /** Total device throughput since the last poll, in bytes/sec. Zero on the first sample. */
+    private fun throughput(now: Long): Long {
+        val rx = android.net.TrafficStats.getTotalRxBytes()
+        val tx = android.net.TrafficStats.getTotalTxBytes()
+        if (rx == android.net.TrafficStats.UNSUPPORTED.toLong()) return 0L
+        val rate = if (lastNetMs == 0L) 0L else {
+            val secs = ((now - lastNetMs) / 1000.0).coerceAtLeast(0.001)
+            (((rx - lastRx) + (tx - lastTx)) / secs).toLong().coerceAtLeast(0L)
+        }
+        lastRx = rx; lastTx = tx; lastNetMs = now
+        return rate
     }
 
     private companion object {

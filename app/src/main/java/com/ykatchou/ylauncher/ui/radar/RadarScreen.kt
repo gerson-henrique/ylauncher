@@ -97,9 +97,9 @@ private fun SummaryBar(s: RadarSummary) {
         modifier = Modifier.fillMaxWidth().padding(bottom = Y.space.md),
         horizontalArrangement = Arrangement.spacedBy(Y.space.sm),
     ) {
-        Chip(s.callsPerMin.toString(), "chamadas/min", Modifier.weight(1f))
-        Chip(s.activeConns.toString(), "conexões", Modifier.weight(1f))
-        Chip(s.topApp, "quem mais fala", Modifier.weight(1f))
+        Chip(fmtRate(s.bytesPerSec), "tráfego", Modifier.weight(1f))
+        Chip(s.appsOnNet.toString(), "apps na rede", Modifier.weight(1f))
+        Chip(s.topOrg, "mais falado", Modifier.weight(1f))
     }
 }
 
@@ -164,10 +164,16 @@ private fun FeedRow(line: RadarLine) {
             modifier = Modifier.weight(0.9f),
         )
         androidx.compose.material3.Text(text = "→", style = Y.type.caption, color = Y.textFaint)
+        val known = line.owner != null
+        val dest = when {
+            known -> "${line.owner}:${line.port}"
+            line.remote.contains(':') -> "[${line.remote}]:${line.port}"
+            else -> "${line.remote}:${line.port}"
+        }
         androidx.compose.material3.Text(
-            text = if (line.remote.contains(':')) "[${line.remote}]:${line.port}" else "${line.remote}:${line.port}",
+            text = dest,
             style = Y.type.caption,
-            color = Color(0xFF5AA1B8),
+            color = if (known) Color(0xFF5AA1B8) else Y.textDim,   // known org pops; raw IP recedes
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1.4f),
@@ -188,6 +194,13 @@ private fun Centered(text: String) {
             modifier = Modifier.padding(Y.space.xl),
         )
     }
+}
+
+/** Bytes/sec as a compact human rate. */
+private fun fmtRate(bps: Long): String = when {
+    bps < 1024 -> "$bps B/s"
+    bps < 1024 * 1024 -> "${bps / 1024} KB/s"
+    else -> String.format("%.1f MB/s", bps / 1048576.0)
 }
 
 /** A stable colour per app so the eye can track a talker down the feed. */
