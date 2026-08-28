@@ -336,21 +336,19 @@ fun HomeScreen(
                             .height(IntrinsicSize.Min),
                         verticalAlignment = Alignment.Top,
                     ) {
-                        // Centred over the left column rather than pinned to the screen edge, so
-                        // it sits above the app list instead of drifting off to the corner.
-                        Box(
-                            modifier = Modifier.fillMaxWidth(0.5f),
-                            contentAlignment = Alignment.TopCenter,
+                        // Left slot — freed by moving the temperature over to the right. Empty
+                        // for now; something glanceable goes here next (see chat).
+                        Box(modifier = Modifier.fillMaxWidth(0.5f)) {}
+                        // Temperature stacked above the clock, both centred on the same axis.
+                        Column(
+                            modifier = Modifier.weight(1f).padding(end = 20.dp),
+                            horizontalAlignment = Alignment.End,
                         ) {
-                            WeatherWidget(
-                                repository = viewModel.weatherRepository,
-                                modifier = Modifier.padding(top = 4.dp),
-                            )
-                        }
-                        Box(
-                            modifier = Modifier.weight(1f),
-                            contentAlignment = Alignment.TopEnd,
-                        ) {
+                        WeatherWidget(
+                            repository = viewModel.weatherRepository,
+                            scale = 1.35f,
+                            modifier = Modifier.padding(bottom = 2.dp),
+                        )
                         ClockWidget(
                             onClockClick = {
                                 try {

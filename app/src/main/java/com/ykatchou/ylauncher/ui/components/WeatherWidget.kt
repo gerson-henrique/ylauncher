@@ -33,6 +33,7 @@ import kotlinx.coroutines.delay
 fun WeatherWidget(
     repository: WeatherRepository,
     modifier: Modifier = Modifier,
+    scale: Float = 1f,
 ) {
     var weather by remember { mutableStateOf<Weather?>(repository.cachedOrNull()) }
 
@@ -48,14 +49,15 @@ fun WeatherWidget(
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy((6 * scale).dp),
     ) {
-        // Same type scale as the clock opposite it — displayLarge, same wallpaper shadow — so
-        // the two top corners read as a matched pair rather than one heading and one footnote.
-        Text(text = current.icon, fontSize = 34.sp)
+        Text(text = current.icon, fontSize = (34 * scale).sp)
         Text(
             text = "${current.temperatureCelsius}°",
-            style = MaterialTheme.typography.displayLarge.copy(shadow = WallpaperTextShadow),
+            style = MaterialTheme.typography.displayLarge.copy(
+                shadow = WallpaperTextShadow,
+                fontSize = MaterialTheme.typography.displayLarge.fontSize * scale,
+            ),
             color = HomeTextColor,
             fontWeight = FontWeight.Light,
         )

@@ -11,6 +11,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.ykatchou.ylauncher.ui.theme.WallpaperTextShadow
@@ -38,7 +39,10 @@ fun ClockWidget(
     val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     val dateFormat = remember { SimpleDateFormat("EEEE, d MMMM", Locale.getDefault()) }
 
-    Column(modifier = modifier.padding(horizontal = 24.dp)) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.End,
+    ) {
         Text(
             text = timeFormat.format(date),
             style = MaterialTheme.typography.displayLarge.copy(shadow = WallpaperTextShadow),
