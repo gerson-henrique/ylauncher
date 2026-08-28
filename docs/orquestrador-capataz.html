@@ -1,0 +1,184 @@
+<title>Capataz de Bolso</title>
+<style>
+  :root{
+    /* light — a folha de despacho impressa */
+    --bg:#f2ede4; --panel:#fbf7ef; --panel-2:#ece5d7; --line:#ddd2bd;
+    --ink:#241f19; --ink-dim:#6c6252; --faint:#95897360;
+    --ruby:#c0343e; --ruby-ink:#8f2028; --mustard:#a97c0a; --mustard-ink:#7c5a06;
+    --ok:#4f7a3f; --wait:#b07d12;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  :root:not([data-theme="light"]){ @media (prefers-color-scheme:dark){
+    --bg:#141110; --panel:#1d1917; --panel-2:#241f1c; --line:#332723;
+    --ink:#efe6de; --ink-dim:#a99c90; --faint:#6a5c54;
+    --ruby:#e0555f; --ruby-ink:#eb8b92; --mustard:#e0b64b; --mustard-ink:#f0d283;
+    --ok:#8fc07a; --wait:#e0b64b;
+  }}
+  :root[data-theme="dark"]{
+    --bg:#141110; --panel:#1d1917; --panel-2:#241f1c; --line:#332723;
+    --ink:#efe6de; --ink-dim:#a99c90; --faint:#6a5c54;
+    --ruby:#e0555f; --ruby-ink:#eb8b92; --mustard:#e0b64b; --mustard-ink:#f0d283;
+    --ok:#8fc07a; --wait:#e0b64b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.62;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:840px;margin:0 auto;padding:52px 22px 110px}
+  .eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--ruby-ink);margin:0 0 14px}
+  h1{font-size:clamp(40px,8.5vw,66px);line-height:.98;margin:0 0 18px;font-weight:800;letter-spacing:-.025em}
+  .lede{font-size:18.5px;color:var(--ink-dim);max-width:62ch;margin:0}
+  .lede b{color:var(--ink);font-weight:600}
+  h2{font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.16em;color:var(--ruby-ink);
+    margin:58px 0 18px;display:flex;align-items:center;gap:12px}
+  h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+  p{margin:0 0 14px}
+  code{font-family:var(--mono);font-size:.86em;background:var(--panel-2);padding:1.5px 6px;border-radius:5px;
+    color:var(--mustard-ink);border:1px solid var(--line)}
+  .diagram{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;overflow-x:auto}
+  .flow{display:flex;flex-wrap:wrap;align-items:center;gap:9px 7px;font-family:var(--mono);font-size:12.5px}
+  .flow+.flow{margin-top:12px}
+  .node{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:7px 11px;white-space:nowrap}
+  .node.dell{border-color:var(--ruby);color:var(--ruby-ink)}
+  .node.phone{border-color:var(--mustard);color:var(--mustard-ink)}
+  .node.sse{border-color:var(--ok);color:var(--ok)}
+  .arrow{color:var(--faint);font-size:12px}
+  .grid{display:grid;gap:14px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+  @media(max-width:660px){.two,.three{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+  .card .tag{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.04em;display:block;margin-bottom:6px}
+  .card h3{margin:0 0 5px;font-size:17px}
+  .card p{color:var(--ink-dim);margin:0;font-size:14.5px}
+  .card p b{color:var(--ink);font-weight:600}
+  .hero3{border-top:3px solid var(--ruby)}
+  ul{margin:8px 0 0;padding-left:20px;color:var(--ink-dim)} li{margin:6px 0} li b{color:var(--ink);font-weight:600}
+  .pill{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;font-weight:600;
+    padding:3px 9px;border-radius:20px;border:1px solid var(--line)}
+  .pill.att{color:var(--ruby);border-color:var(--ruby)}
+  .pill.wait{color:var(--wait);border-color:var(--wait)}
+  .pill.ok{color:var(--ok);border-color:var(--ok)}
+  .shape{font-size:14px}
+  .q{background:var(--panel-2);border-left:3px solid var(--mustard);border-radius:0 10px 10px 0;padding:13px 17px;margin:11px 0}
+  .q b{color:var(--ink)} .q .rec{color:var(--mustard-ink);font-weight:600}
+  .warn{background:linear-gradient(180deg,color-mix(in srgb,var(--ruby) 12%,transparent),transparent);
+    border:1px solid var(--line);border-radius:14px;padding:16px 20px;margin-top:16px}
+  .warn h3{margin:0 0 6px;color:var(--ruby-ink);font-size:16px} .warn p{margin:0;color:var(--ink-dim);font-size:14.5px}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin-top:6px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint)}
+  td code{font-size:.82em}
+  .foot{margin-top:60px;padding-top:18px;border-top:1px solid var(--line);color:var(--faint);font-size:12px;font-family:var(--mono)}
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">ylauncher · página 0 · orquestrador</p>
+  <h1>Capataz de Bolso</h1>
+  <p class="lede">O celular vira o <b>console da frota da Ruby</b>: lê a frota de agentes, mostra quem
+    travou esperando permissão, e deixa você <b>decidir de outro cômodo sem levantar</b>. Toda a regra
+    mora no Dell — o app só lê, mostra e envia decisão. Ele nunca fala com o Claude, nunca guarda estado
+    de domínio.</p>
+
+  <h2>o caminho dos dados</h2>
+  <div class="diagram">
+    <div class="flow">
+      <span class="node phone">página 0</span><span class="arrow">──parear (código 6 hex)──▶</span>
+      <span class="node dell">Dell · 192.168.0.30:8080</span><span class="arrow">──token 48 hex──▶</span>
+      <span class="node phone">Keystore</span>
+    </div>
+    <div class="flow">
+      <span class="node phone">abre a tela</span><span class="arrow">─ GET /frota /pedidos /despachos ─▶</span>
+      <span class="node">snapshot inicial</span><span class="arrow">→</span>
+      <span class="node phone">3 listas na tela</span>
+    </div>
+    <div class="flow">
+      <span class="node sse">GET /eventos (SSE, sempre aberto)</span><span class="arrow">─ execucao_mudou · pedido_aberto · … ─▶</span>
+      <span class="node phone">merge no estado ao vivo</span>
+    </div>
+    <div class="flow">
+      <span class="node phone">Permitir / Negar</span><span class="arrow">─ POST /pedidos/{id}/decisao ─▶</span>
+      <span class="node dell">retoma o fluxo de onde parou</span>
+    </div>
+  </div>
+  <p style="margin-top:14px;color:var(--ink-dim);font-size:14.5px">Um <code>Authorization: Bearer</code> em
+    tudo. Timestamps são <b>unix segundos</b>. Base URL <b>editável</b> nas configurações — o IP do Dell muda.</p>
+
+  <h2>as três telas</h2>
+  <div class="three">
+    <div class="card">
+      <span class="tag">GET /frota · sessao_mudou</span>
+      <h3>Frota</h3>
+      <p>Sessões do Claude na casa. Ordena por <b>quem está parado há mais tempo</b>
+        (<code>agora − vista_em</code>). Estado por <b>forma, não só cor</b>.</p>
+      <p style="margin-top:9px;display:flex;flex-wrap:wrap;gap:6px">
+        <span class="pill att">◆ travada</span><span class="pill att">✕ perdida</span>
+        <span class="pill ok">● rodando</span><span class="pill">○ ociosa</span>
+      </p>
+    </div>
+    <div class="card hero3">
+      <span class="tag">GET /pedidos · pedido_aberto</span>
+      <h3>Pedidos <span class="pill att" style="vertical-align:middle">o coração</span></h3>
+      <p>Card com título + detalhe (texto puro, pode rolar) e <b>Permitir / Negar</b>. É o que
+        justifica o app: <b>notificação push local</b> quando chega um pedido, pra aprovar de longe.</p>
+    </div>
+    <div class="card">
+      <span class="tag">GET /despachos · execucao_mudou</span>
+      <h3>Despachos</h3>
+      <p>Execuções de fluxos com estado ao vivo. Botão pra <b>disparar</b> um fluxo de
+        <code>/fluxos</code>. Últimas 50, sem paginação.</p>
+    </div>
+  </div>
+
+  <h2>SSE é o coração — não um extra</h2>
+  <p style="color:var(--ink-dim);font-size:15px"><code>GET /eventos</code> fica aberto e empurra tudo.
+    O app desenha o snapshot REST uma vez e daí <b>vive do stream</b>. Regras que o contrato crava:</p>
+  <ul>
+    <li><b>Reconecta sozinho</b> por especificação — a tela <b>não cai</b> na reconexão, mostra "religando".</li>
+    <li>Campos opcionais são <b>omitidos</b>, não <code>null</code> — desserializar tolerante a ausência.</li>
+    <li><b>Ignorar tipos desconhecidos</b> — vão surgir novos eventos; nunca quebrar por isso.</li>
+    <li><code>pulso</code> é keep-alive; <code>fala</code> é a voz da Ruby (dá pra mostrar como toast).</li>
+  </ul>
+
+  <h2>o que nasce no ylauncher</h2>
+  <table>
+    <tr><th>peça</th><th>pacote</th><th>faz</th></tr>
+    <tr><td><code>RubyConfig</code></td><td>data/ruby</td><td>base URL editável (DataStore) + token no <b>ClaudeSecretStore</b> que já temos (Keystore, sem dep nova).</td></tr>
+    <tr><td><code>RubyApi</code></td><td>data/ruby</td><td>REST na mão: <code>HttpURLConnection</code> + org.json, no padrão do <code>WeatherRepository</code>. parear · frota · pedidos · despachos · decisão.</td></tr>
+    <tr><td><code>RubyEventStream</code></td><td>data/ruby</td><td>SSE: GET persistente, lê linha <code>data: {json}</code>, backoff na reconexão, emite <code>Flow&lt;Evento&gt;</code>.</td></tr>
+    <tr><td><code>OrchestratorViewModel</code></td><td>ui/orchestrator</td><td>um <code>StateFlow</code> do mundo (frota+pedidos+despachos), semeado por REST e mesclado pelo SSE.</td></tr>
+    <tr><td><code>OrchestratorScreen</code></td><td>ui/orchestrator</td><td>segmented Frota·Pedidos·Despachos + tela de pareamento no primeiro uso + banner "fora da rede".</td></tr>
+  </table>
+
+  <h2>decisões que preciso fechar</h2>
+
+  <div class="q"><b>1. Cliente SSE.</b> O contrato sugere OkHttp <code>EventSources</code>. Mas o app é
+    de propósito leve — tudo é <code>HttpURLConnection</code> cru, zero OkHttp. O formato aqui é simples
+    (uma linha <code>data:{json}</code> por evento). <span class="rec">Recomendo manter cru</span> e escrever
+    o loop de reconexão com backoff na mão — sem dependência nova. Alternativa: puxar OkHttp+okhttp-sse (~800KB) e ganhar reconexão pronta.</div>
+
+  <div class="q"><b>2. Push de outro cômodo.</b> A notificação é o valor inteiro do app — e pra ela tocar
+    com a tela fora, o SSE precisa viver fora da página. <span class="rec">Recomendo faseado</span>:
+    <b>v1</b> = SSE enquanto a página está aberta + as 3 telas + decisão funcionando; <b>v2</b> = um
+    <i>foreground service</i> segurando o SSE e postando notificação em <code>pedido_aberto</code>
+    (pede <code>FOREGROUND_SERVICE</code> + <code>POST_NOTIFICATIONS</code>). Fecha em duas etapas ou já mira o serviço?</div>
+
+  <div class="q"><b>3. Cleartext + IP editável.</b> É HTTP puro na LAN e o IP muda, então
+    <code>networkSecurityConfig</code> por domínio não serve. <span class="rec">Recomendo</span>
+    <code>base-config cleartextTrafficPermitted="true"</code> — app é só-LAN e não guarda nada sensível
+    além do token, como o próprio contrato diz.</div>
+
+  <div class="q"><b>4. Onde mora.</b> Fica na <b>página 0</b> (já reservada), substituindo o placeholder.
+    As 3 telas viram um segmented control no topo da página, com <b>Pedidos</b> como aba inicial.</div>
+
+  <div class="warn">
+    <h3>o que o app NÃO faz (o contrato proíbe)</h3>
+    <p>Sem cancelar execução, sem excluir pedido — não há rota, não inventar UI. Sem paginação.
+      "Fora da rede" é <b>estado normal</b>, não erro. <code>travada</code> é <b>espera</b> (assinatura
+      no limite, retoma depois), nunca falha. <code>detalhe</code> é texto de modelo → renderizar como
+      texto puro, nunca HTML.</p>
+  </div>
+
+  <p class="foot">fonte da verdade: gerson-henrique/ruby · docs/contrato-android.md @ reescopo/capataz · desenho antes do código</p>
+</div>

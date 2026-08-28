@@ -1,0 +1,199 @@
+<title>Ruby no Bolso</title>
+<style>
+  :root{
+    --bg:#f3ede6; --panel:#fbf7f1; --panel-2:#ece3d8; --line:#ddd0be;
+    --ink:#241d1a; --ink-dim:#6b5f57; --faint:#9a8b7f;
+    --ruby:#c0343e; --ruby-ink:#8f222b; --mustard:#a97c0a; --mustard-ink:#7c5a06; --ok:#4f7a3f;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  :root:not([data-theme="light"]){ @media (prefers-color-scheme:dark){
+    --bg:#141010; --panel:#1e1817; --panel-2:#251d1c; --line:#352825;
+    --ink:#efe5e0; --ink-dim:#ab9b93; --faint:#6d5d55;
+    --ruby:#e0555f; --ruby-ink:#ec8b92; --mustard:#e0b64b; --mustard-ink:#f0d283; --ok:#8fc07a;
+  }}
+  :root[data-theme="dark"]{
+    --bg:#141010; --panel:#1e1817; --panel-2:#251d1c; --line:#352825;
+    --ink:#efe5e0; --ink-dim:#ab9b93; --faint:#6d5d55;
+    --ruby:#e0555f; --ruby-ink:#ec8b92; --mustard:#e0b64b; --mustard-ink:#f0d283; --ok:#8fc07a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.62;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:900px;margin:0 auto;padding:52px 22px 110px}
+  .eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--ruby-ink);margin:0 0 14px}
+  h1{font-size:clamp(42px,9vw,70px);line-height:.96;margin:0 0 18px;font-weight:800;letter-spacing:-.025em}
+  .lede{font-size:18.5px;color:var(--ink-dim);max-width:60ch;margin:0}
+  .lede b{color:var(--ink);font-weight:600}
+  h2{font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.16em;color:var(--ruby-ink);margin:56px 0 18px;display:flex;align-items:center;gap:12px}
+  h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+  p{margin:0 0 14px}
+  code{font-family:var(--mono);font-size:.85em;background:var(--panel-2);padding:1.5px 6px;border-radius:5px;color:var(--mustard-ink);border:1px solid var(--line)}
+  .split{display:grid;grid-template-columns:1.1fr .9fr;gap:20px;align-items:start}
+  @media(max-width:680px){.split{grid-template-columns:1fr}}
+  /* phone mock */
+  .phone{background:#0e0b0b;border:2px solid var(--line);border-radius:26px;padding:12px 10px;max-width:300px;margin:0 auto;box-shadow:0 20px 50px -20px rgba(0,0,0,.5)}
+  .scr{background:#161010;border-radius:16px;padding:12px 10px;font-size:12.5px;min-height:420px;display:flex;flex-direction:column;gap:8px}
+  .scrhead{display:flex;align-items:center;gap:8px;padding-bottom:8px;border-bottom:1px solid #2c2220}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--ok)}
+  .scrhead b{color:#efe5e0;font-size:13px}
+  .scrhead .liv{color:#8fc07a;font-family:var(--mono);font-size:10px;margin-left:auto}
+  .msg{max-width:82%;padding:8px 11px;border-radius:13px;line-height:1.4}
+  .msg.her{background:#241d1c;color:#e8ddd6;border-bottom-left-radius:4px;align-self:flex-start}
+  .msg.you{background:#a97c0a;color:#231a05;border-bottom-right-radius:4px;align-self:flex-end}
+  .msg.think{color:#8a7a72;font-style:italic;align-self:flex-start;background:none;padding:2px 4px}
+  .gesto{color:#c0343e;font-style:italic;font-size:11px;display:block;margin-top:3px}
+  .appr{border:1px solid #4a3a20;background:#1d1712;border-radius:11px;padding:9px;align-self:stretch;max-width:100%}
+  .appr b{color:#efe5e0;font-size:12px}.appr p{margin:3px 0 8px;color:#ab9b93;font-size:11px}
+  .appr .btns{display:flex;gap:6px}.appr .btns span{flex:1;text-align:center;border-radius:20px;padding:6px;font-size:11px;font-weight:700}
+  .appr .no{border:1px solid #4a3a38;color:#e8ddd6}.appr .yes{background:#a97c0a;color:#231a05}
+  .bar{margin-top:auto;display:flex;gap:6px;align-items:center;padding-top:8px}
+  .bar .inp{flex:1;background:#241d1c;border:1px solid #352825;border-radius:20px;padding:7px 11px;color:#6d5d55}
+  .bar .send{width:30px;height:30px;border-radius:50%;background:#a97c0a;color:#231a05;display:flex;align-items:center;justify-content:center;font-weight:800}
+  .cap{text-align:center;font-family:var(--mono);font-size:11px;color:var(--faint);margin-top:12px}
+  .grid{display:grid;gap:14px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}@media(max-width:640px){.two{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+  .card .tag{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.04em;display:block;margin-bottom:6px}
+  .card h3{margin:0 0 5px;font-size:17px}.card p{color:var(--ink-dim);margin:0;font-size:14.5px}.card p b{color:var(--ink);font-weight:600}
+  ul{margin:8px 0 0;padding-left:20px;color:var(--ink-dim)}li{margin:6px 0}li b{color:var(--ink);font-weight:600}
+  .lane{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  @media(max-width:640px){.lane{grid-template-columns:1fr}}
+  .lane>div{padding:18px 20px}
+  .lane .mine{background:color-mix(in srgb,var(--mustard) 10%,transparent);border-right:1px solid var(--line)}
+  .lane .hers{background:color-mix(in srgb,var(--ruby) 9%,transparent)}
+  .lane h3{margin:0 0 8px;font-size:14px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em}
+  .lane .mine h3{color:var(--mustard-ink)}.lane .hers h3{color:var(--ruby-ink)}
+  .lane ul{margin:0;padding-left:18px}.lane li{font-size:14px}
+  .steps{counter-reset:s;display:grid;gap:10px}
+  .step{display:flex;gap:13px;align-items:flex-start}
+  .step::before{counter-increment:s;content:counter(s);flex:none;width:26px;height:26px;border-radius:50%;background:var(--ruby);color:#fff;font-family:var(--mono);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .step div{padding-top:2px}.step b{color:var(--ink)}.step small{color:var(--faint);font-family:var(--mono)}
+  .warn{background:linear-gradient(180deg,color-mix(in srgb,var(--ruby) 13%,transparent),transparent);border:1px solid var(--line);border-radius:14px;padding:16px 20px;margin-top:16px}
+  .warn h3{margin:0 0 6px;color:var(--ruby-ink);font-size:16px}.warn p{margin:0;color:var(--ink-dim);font-size:14.5px}
+  .foot{margin-top:60px;padding-top:18px;border-top:1px solid var(--line);color:var(--faint);font-size:12px;font-family:var(--mono)}
+  .kill{text-decoration:line-through;color:var(--faint)}
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">ylauncher · página 0 · re-escopo</p>
+  <h1>Ruby no Bolso</h1>
+  <p class="lede">Chega de console. A página vira <b>a conversa com a Ruby</b> — você fala, ela pensa
+    e responde frase por frase, e <b>ela</b> orquestra a frota. Frota, pedidos e despachos param de ser
+    telas que você opera: viram coisas que a Ruby <b>te traz na conversa</b>. <span class="kill">Capataz</span>
+    morreu — a Ruby é o capataz; o app é a janela pra ela.</p>
+
+  <h2>a tela</h2>
+  <div class="split">
+    <div>
+      <p style="color:var(--ink-dim);font-size:15px">A conversa é o centro, não uma aba. Uma barra de
+        digitar embaixo, as falas subindo. Os <code>fala</code> chegam em pedaços e a tela
+        <b>apenda</b> (o primeiro é um filler de ~0ms, a resposta real vem depois). O <code>gesto</code>
+        aparece à parte, na voz dela. Quando ela precisa de uma decisão, o <code>aprovar</code> vira um
+        cartão <b>dentro da conversa</b> — aprovar é responder pra ela, não caçar um botão noutra tela.</p>
+      <p style="color:var(--ink-dim);font-size:15px">No topo, o acesso às <b>conversas</b>: trocar de
+        conversa, começar uma nova, excluir as antigas. Cada conversa é um contexto separado da Ruby —
+        foi o que você pediu por "controlar o contexto".</p>
+    </div>
+    <div>
+      <div class="phone"><div class="scr">
+        <div class="scrhead"><span class="dot"></span><b>Ruby</b><span class="liv">ao vivo</span></div>
+        <div class="msg you">foca no faeerie-haven e revisa a branch</div>
+        <div class="msg think">pera aí…</div>
+        <div class="msg her">Ok. Puxei a frota — tem uma sessão travada lá há 24h.<span class="gesto">estala os dedos</span></div>
+        <div class="appr">
+          <b>Revisão de main…HEAD pronta</b>
+          <p>Refatoração que extrai o orchestrator em crates especializados.</p>
+          <div class="btns"><span class="no">Negar</span><span class="yes">Permitir</span></div>
+        </div>
+        <div class="bar"><div class="inp">mensagem…</div><div class="send">↑</div></div>
+      </div></div>
+      <p class="cap">conversa + decisão no mesmo lugar</p>
+    </div>
+  </div>
+
+  <h2>o canal — /ws, já existe e streama</h2>
+  <div class="two">
+    <div class="card">
+      <span class="tag">app → ruby</span>
+      <h3>Você fala</h3>
+      <p><code>{"tipo":"falar","texto":"…"}</code> · e a decisão vai pelo mesmo canal:
+        <code>{"tipo":"aprovacao","id":"ap_…","ok":true}</code>.</p>
+    </div>
+    <div class="card">
+      <span class="tag">ruby → app</span>
+      <h3>Ela responde</h3>
+      <p><code>pensando</code> · <code>fala</code> (apenda, com <code>gesto</code> opcional) ·
+        <code>aprovar</code> (vira cartão) · <code>estado</code> · <code>aviso</code> · <code>erro</code>.
+        Tipo desconhecido é <b>ignorado</b>.</p>
+    </div>
+  </div>
+  <p style="margin-top:14px;color:var(--ink-dim);font-size:14.5px">Cliente = <code>java.net.http.WebSocket</code>
+    nativo (Android 15, <b>sem OkHttp</b> — mantém o app leve). Auth = header
+    <code>Authorization: Bearer &lt;token&gt;</code>, o mesmo do pareamento REST.
+    <b>Um canal só:</b> o <code>/ws</code> agora carrega fala, estado de execução e o card — o
+    <code>SSE /v1/eventos</code> fica <b>aposentado</b> nesse app. Miro a conversa por campo no frame:
+    <code>{"falar","texto","conversa":"c_…"}</code> (opcional).</p>
+
+  <h2>as conversas — o que você pediu</h2>
+  <div class="grid">
+    <div class="card"><span class="tag">lista</span><h3>Trocar de conversa</h3><p>Uma gaveta com suas conversas, título = primeira mensagem. Toca e entra no contexto dela.</p></div>
+    <div class="two">
+      <div class="card"><span class="tag">nova</span><h3>Começar do zero</h3><p>Botão de nova conversa — contexto limpo, a Ruby não arrasta o assunto anterior.</p></div>
+      <div class="card"><span class="tag">excluir</span><h3>Podar as antigas</h3><p>Deslizar pra excluir uma conversa velha. Some do dispositivo.</p></div>
+    </div>
+  </div>
+
+  <h2>a verdade honesta — o que funciona e o que não</h2>
+  <div class="lane">
+    <div class="mine">
+      <h3>minha parte · o app</h3>
+      <ul>
+        <li>Tela de conversa contra o <code>/ws</code> como ele é <b>hoje</b></li>
+        <li>Streaming: apendar <code>fala</code>, filler, gesto</li>
+        <li>Cartão de <code>aprovar</code> na conversa</li>
+        <li>Lista/nova/excluir conversa (quando as rotas existirem)</li>
+        <li>UI <b>honesta</b>: não fingir que ela age antes de poder</li>
+      </ul>
+    </div>
+    <div class="hers">
+      <h3>parte da ruby · o servidor</h3>
+      <ul>
+        <li><b>Auth no /ws</b> — hoje não tem, qualquer um na LAN fala na tua assinatura</li>
+        <li><b>Conversa por dispositivo</b> — hoje é uma só, compartilhada com o navegador</li>
+        <li><b>Múltiplas conversas</b> — listar / criar / excluir / histórico</li>
+        <li><b>Ferramentas</b> — ver a frota + despachar/decidir a partir do chat</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="warn">
+    <h3>o risco de ordem que a Ruby levantou</h3>
+    <p>Sem as <b>ferramentas</b> dela, a conversa fica linda e <b>não causa nada</b> — ela fala, mas não
+      dispara fluxo nem vê a frota. Então a tela pode existir antes, mas o app só "acende" quando ela
+      puder agir. Por isso a ordem importa.</p>
+  </div>
+
+  <h2>a ordem — e a decisão que é sua</h2>
+  <div class="steps">
+    <div class="step"><div><b>Auth no /ws</b> <small>· ruby · primeiro</small><br>pequeno, e hoje é buraco aberto na LAN. Fecha antes de qualquer cliente nativo.</div></div>
+    <div class="step"><div><b>Tela de conversa</b> <small>· app · em paralelo</small><br>eu construo já — conversa contra o /ws atual, streaming honesto, card de aprovação embutido.</div></div>
+  </div>
+  <p style="margin:16px 0 10px;color:var(--ink-dim);font-size:15px">Depois disso, a Ruby faz <b>uma das duas</b>
+    em seguida — e a ordem é sua escolha, porque uma some sentido sem a outra:</p>
+  <div class="two">
+    <div class="card" style="border-top:3px solid var(--ruby)">
+      <span class="tag">opção A</span><h3>Ela agindo primeiro</h3>
+      <p><b>Ferramentas:</b> a Ruby vê a frota e despacha/decide a partir do chat. Você vê orquestração
+        <b>de verdade</b> — mas ainda numa conversa só (sem lista/nova/excluir). Responde "pra que serve".</p>
+    </div>
+    <div class="card" style="border-top:3px solid var(--mustard)">
+      <span class="tag">opção B</span><h3>Conversas primeiro</h3>
+      <p><b>Multi-conversa:</b> lista/nova/excluir, cada uma um contexto — o que você pediu. Mas a Ruby
+        ainda <b>não age</b> até as ferramentas virem depois. Conversa bonita que ainda não causa nada.</p>
+    </div>
+  </div>
+  <p style="margin-top:12px;color:var(--faint);font-size:13.5px;font-family:var(--mono)">o /ws já foi
+    desenhado com <code>conversa</code> opcional justamente pra inverter A↔B sem retrabalho.</p>
+
+  <p class="foot">fonte: gerson-henrique/ruby · /ws texto+streaming · desenho antes do código · o recheio é dela, a janela é minha</p>
+</div>
