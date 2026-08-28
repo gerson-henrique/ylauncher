@@ -53,7 +53,10 @@ fun RunningAppsColumn(
             // Keyed by package so the dismiss state belongs to the app, not to a list position —
             // without this, closing one app hands its half-swiped state to whoever shifts up.
             key(app.packageName) {
-                val item = @Composable { itemModifier: Modifier ->
+                // allowNotifSwipe is off inside the closeable column: there, the drag belongs to
+                // closing the app, so the inner notification-dismiss box must not sit on top of it
+                // and swallow the gesture. The badge/preview still show — only the swipe is gone.
+                val item = @Composable { itemModifier: Modifier, allowNotifSwipe: Boolean ->
                     FavoriteItem(
                         appInfo = app,
                         displayName = app.appLabel,
@@ -61,13 +64,17 @@ fun RunningAppsColumn(
                         notification = notifications[app.packageName],
                         showNotifPreview = showNotifPreview,
                         showNotifBadge = showNotifBadge,
-                        onDismissNotification = { onDismissNotification(app.packageName) },
+                        onDismissNotification = if (allowNotifSwipe) {
+                            { onDismissNotification(app.packageName) }
+                        } else {
+                            null
+                        },
                         modifier = itemModifier,
                     )
                 }
 
                 if (!canClose) {
-                    item(Modifier)
+                    item(Modifier, true)
                 } else {
                     val dismissState = rememberSwipeToDismissBoxState(
                         // Half the width. Closing cannot be undone, so it should take a decided
@@ -114,7 +121,7 @@ fun RunningAppsColumn(
                         },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        item(Modifier)
+                        item(Modifier, false)
                     }
                 }
             }
