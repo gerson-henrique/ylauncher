@@ -336,9 +336,11 @@ fun HomeScreen(
                             .height(IntrinsicSize.Min),
                         verticalAlignment = Alignment.Top,
                     ) {
-                        // Left slot — freed by moving the temperature over to the right. Empty
-                        // for now; something glanceable goes here next (see chat).
-                        Box(modifier = Modifier.fillMaxWidth(0.5f)) {}
+                        // Left slot — freed by moving the temperature over to the right. The
+                        // kung-fu corner: a proverb of the day, curated and offline.
+                        Box(modifier = Modifier.fillMaxWidth(0.5f)) {
+                            com.ykatchou.ylauncher.ui.components.ProverbWidget()
+                        }
                         // Temperature stacked above the clock, both centred on the same axis.
                         Column(
                             modifier = Modifier.weight(1f).padding(end = 20.dp),
