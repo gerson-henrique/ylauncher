@@ -3,6 +3,7 @@ package com.ykatchou.ylauncher.ui.components
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -12,6 +13,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ykatchou.ylauncher.ui.theme.Y
+import com.ykatchou.ylauncher.ui.theme.glass
 
 /** A proverb: Portuguese, its authentic Chinese source, and the author (romanized + 中文). */
 data class Proverbio(val pt: String, val zh: String, val autor: String, val autorZh: String)
@@ -151,19 +153,28 @@ fun proverbioAleatorio(): Proverbio = PROVERBIOS.random()
 @Composable
 fun ProverbWidget(modifier: Modifier = Modifier) {
     val p = remember { proverbioAleatorio() }
-    Column(modifier = modifier.fillMaxWidth().padding(start = 4.dp, top = 6.dp, end = 10.dp)) {
-        // Portuguese, in white and bold — the line you read.
+    // On a smoked-glass card so white text stays legible over any wallpaper — light crane or dark.
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(start = 2.dp, top = 4.dp, end = 8.dp)
+            .glass(RoundedCornerShape(Y.radius.card))
+            .padding(horizontal = Y.space.md, vertical = Y.space.sm),
+    ) {
+        // Portuguese, in white, bold and centred — the line you read.
         Text(
             text = p.pt,
             style = Y.type.bodySm.copy(shadow = Y.textShadow, lineHeight = 19.sp),
             color = Y.text,
             fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
         )
-        // The Chinese source, centred and unbold, in the faintest shade.
+        // The Chinese source, centred and unbold, in the same dim as the clock's weekday.
         Text(
             text = p.zh,
             style = Y.type.caption.copy(shadow = Y.textShadow, letterSpacing = 1.sp),
-            color = Y.textFaint,
+            color = Y.textDim,
             fontWeight = FontWeight.Normal,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
