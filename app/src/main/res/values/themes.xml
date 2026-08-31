@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.YLauncher" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowShowWallpaper">true</item>
-        <item name="android:windowBackground">@android:color/transparent</item>
+        <!-- Opaque window on purpose. windowShowWallpaper=true asks the system to composite the
+             live wallpaper behind a translucent launcher window; on this device's Mali/hwcomposer
+             that overlay path intermittently fails to reach the panel, leaving only the wallpaper
+             on screen (the launcher "disappears" several times a day). We draw the wallpaper
+             ourselves inside the home instead (see WallpaperBackground), so the window can stay a
+             normal opaque surface the compositor handles reliably. -->
+        <item name="android:windowBackground">@android:color/black</item>
     </style>
 </resources>

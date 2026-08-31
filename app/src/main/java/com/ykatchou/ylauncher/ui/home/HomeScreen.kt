@@ -234,6 +234,19 @@ fun HomeScreen(
     var panelPreviewHideJob by remember { mutableStateOf<Job?>(null) }
     val panelPreviewScope = rememberCoroutineScope()
 
+    // The launcher draws its own home background (the window is opaque now, to dodge the device's
+    // translucent-window compositor bug). The system photo picker needs no permission; on pick we
+    // copy the image into app storage and WallpaperBackground repaints.
+    val backgroundPicker = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia(),
+    ) { uri ->
+        if (uri != null) {
+            panelPreviewScope.launch {
+                com.ykatchou.ylauncher.util.LauncherBackground.set(context, uri)
+            }
+        }
+    }
+
     // Folder state
     var openFolderId by remember { mutableStateOf<Long?>(null) }
     var editingFolderId by remember { mutableStateOf<Long?>(null) }
@@ -244,6 +257,9 @@ fun HomeScreen(
     val allFolders by viewModel.getAllFolders().collectAsState(initial = emptyList())
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // The wallpaper, painted by us behind everything — the window itself is opaque now, to dodge
+        // the device's translucent-window compositor bug. See WallpaperBackground.
+        com.ykatchou.ylauncher.ui.components.WallpaperBackground()
         // Main home content with swipe detection
         Surface(
             modifier = Modifier
@@ -753,30 +769,14 @@ fun HomeScreen(
                 leadingIcon = { Text("🖼️") },
                 onClick = {
                     showBackgroundMenu = false
-                    // ACTION_SET_WALLPAPER is the one that opens the picker people mean by
-                    // "change wallpaper". The two actions tried before both need arguments that
-                    // were never passed: CHANGE_LIVE_WALLPAPER wants a live-wallpaper component
-                    // in EXTRA_LIVE_WALLPAPER_COMPONENT and lands on an empty preview without it,
-                    // and CROP_AND_SET_WALLPAPER wants an image URI in setData.
-                    try {
-                        context.startActivity(
-                            Intent.createChooser(
-                                Intent(Intent.ACTION_SET_WALLPAPER),
-                                chooseWallpaper,
-                            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        )
-                    } catch (_: Exception) {
-                        // Falling back to the live-wallpaper list only if no picker handles the
-                        // plain action at all — a stripped ROM, not the normal path.
-                        try {
-                            context.startActivity(
-                                Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
-                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            )
-                        } catch (_: Exception) {
-                            context.showToast(noWallpaperPicker)
-                        }
-                    }
+                    // Pick the launcher's own home background through the system photo picker. This
+                    // needs no permission and no system wallpaper read (Android 15 blocks that), and
+                    // draws on an opaque window so the home never vanishes to the compositor bug.
+                    backgroundPicker.launch(
+                        androidx.activity.result.PickVisualMediaRequest(
+                            androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly,
+                        ),
+                    )
                 },
             )
 
