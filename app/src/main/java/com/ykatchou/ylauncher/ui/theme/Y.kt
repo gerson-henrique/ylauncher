@@ -37,6 +37,12 @@ object Y {
     /** Alert state only — kept clearly apart from [accent] so mustard never means "wrong". */
     val warn = HomeWarn
 
+    /** Positive/live state — "ao vivo", connected, running. The one green across the app. */
+    val ok = Color(0xFF8FC07A)
+
+    /** Ruby's own colour — her voice in the chat, and her presence dot. */
+    val ruby = Color(0xFFE0555F)
+
     /** Text on the wallpaper, in three weights. Pair with [textShadow] for readability. */
     val text = HomeTextColor
     val textDim = HomeTextColorDim

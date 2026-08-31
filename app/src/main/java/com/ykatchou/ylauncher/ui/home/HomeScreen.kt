@@ -343,15 +343,20 @@ fun HomeScreen(
                         Box(modifier = Modifier.fillMaxWidth(0.5f)) {
                             com.ykatchou.ylauncher.ui.components.ProverbWidget()
                         }
-                        // Temperature stacked above the clock, both centred on the same axis.
+                        // Temperature stacked above the clock, on a smoked-glass card — the same
+                        // design-system surface as the proverb and the pinned-apps strip, so every
+                        // floating home widget reads as one language and stays legible over any
+                        // wallpaper. (The scrim stays reserved for the full-height utility column.)
                         Column(
                             modifier = Modifier
                                 .weight(1f)
-                                // Same vertical scrim as the left column — glass colour, fading
-                                // only at the extremes — so the clock and weather stay legible over
-                                // a light wallpaper and both columns read as one language.
-                                .background(com.ykatchou.ylauncher.ui.theme.Y.scrim)
                                 .padding(end = 20.dp),
+                            horizontalAlignment = Alignment.End,
+                        ) {
+                        Column(
+                            modifier = Modifier
+                                .glass(androidx.compose.foundation.shape.RoundedCornerShape(com.ykatchou.ylauncher.ui.theme.Y.radius.card))
+                                .padding(horizontal = com.ykatchou.ylauncher.ui.theme.Y.space.md, vertical = com.ykatchou.ylauncher.ui.theme.Y.space.sm),
                             horizontalAlignment = Alignment.End,
                         ) {
                         WeatherWidget(
@@ -378,6 +383,7 @@ fun HomeScreen(
                                 } catch (_: Exception) { }
                             },
                         )
+                        }
                         }
                     }
                 }

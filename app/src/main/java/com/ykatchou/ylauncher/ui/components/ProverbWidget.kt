@@ -1,9 +1,9 @@
 package com.ykatchou.ylauncher.ui.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -13,6 +13,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ykatchou.ylauncher.ui.theme.Y
+import com.ykatchou.ylauncher.ui.theme.glass
 
 /** A proverb: Portuguese, its authentic Chinese source, and the author (romanized + 中文). */
 data class Proverbio(val pt: String, val zh: String, val autor: String, val autorZh: String)
@@ -153,13 +154,15 @@ fun proverbioAleatorio(): Proverbio = PROVERBIOS.random()
 @Composable
 fun ProverbWidget(modifier: Modifier = Modifier) {
     val p = remember { proverbioAleatorio() }
-    // Same vertical scrim as the left column (glass colour, fading only at the extremes) — no card,
-    // no border, so it reads as one language with the rest of the home and over any wallpaper.
+    // Smoked-glass card — the design system's surface for a floating home widget, the same one the
+    // pinned-apps strip uses — so the proverb reads as one language with the rest of the home and
+    // stays legible over any wallpaper, light crane or dark. (The scrim is reserved for the
+    // full-height utility column, where its top/bottom fade actually has room to work.)
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(Y.scrim)
-            .padding(horizontal = Y.space.md, vertical = Y.space.md),
+            .glass(RoundedCornerShape(Y.radius.card))
+            .padding(horizontal = Y.space.md, vertical = Y.space.sm),
     ) {
         // Portuguese, in white, bold and centred — the line you read.
         Text(

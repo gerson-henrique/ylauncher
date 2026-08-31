@@ -61,8 +61,6 @@ import kotlinx.coroutines.launch
 
 private val PageBackground = Color(0xFF12100F)
 private val DrawerBackground = Color(0xFF1A1614)
-private val OkGreen = Color(0xFF8FC07A)
-private val RubyRed = Color(0xFFE0555F)
 
 @Composable
 fun ChatScreen(viewModel: ChatViewModel = hiltViewModel()) {
@@ -176,9 +174,9 @@ private fun Header(title: String, connected: Boolean, onMenu: () -> Unit, onNova
         Column(Modifier.weight(1f)) {
             Text(title, style = Y.type.heading, color = Y.text, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(6.dp).clip(CircleShape).background(if (connected) OkGreen else Y.accent))
+                Box(Modifier.size(6.dp).clip(CircleShape).background(if (connected) Y.ok else Y.accent))
                 Spacer(Modifier.width(5.dp))
-                Text(if (connected) "ao vivo" else "religando…", style = Y.type.caption, color = if (connected) OkGreen else Y.accent)
+                Text(if (connected) "ao vivo" else "religando…", style = Y.type.caption, color = if (connected) Y.ok else Y.accent)
             }
         }
         GlyphButton("+", onNova)
@@ -286,7 +284,7 @@ private fun RubyBubble(item: RubyMsg) {
         ) {
             if (item.texto.isNotEmpty()) Text(item.texto, style = Y.type.body, color = Y.text)
             item.gesto?.let {
-                Text(it, style = Y.type.bodySm, color = RubyRed, fontStyle = FontStyle.Italic, modifier = Modifier.padding(top = 3.dp))
+                Text(it, style = Y.type.bodySm, color = Y.ruby, fontStyle = FontStyle.Italic, modifier = Modifier.padding(top = 3.dp))
             }
         }
     }
@@ -298,7 +296,7 @@ private fun SystemRow(item: SystemLine) {
         SysKind.ESTADO -> Y.textFaint
         SysKind.AVISO -> Y.accent
         SysKind.ERRO -> Y.warn
-        SysKind.RECADO -> RubyRed
+        SysKind.RECADO -> Y.ruby
     }
     val text = if (item.kind == SysKind.RECADO) "Ruby: ${item.texto}" else item.texto
     val style = if (item.kind == SysKind.RECADO) FontStyle.Italic else FontStyle.Normal

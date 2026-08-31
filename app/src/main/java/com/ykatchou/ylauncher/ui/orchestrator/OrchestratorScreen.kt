@@ -56,7 +56,6 @@ import com.ykatchou.ylauncher.ui.theme.Y
 import com.ykatchou.ylauncher.ui.theme.glass
 
 private val PageBackground = Color(0xFF0F0E14)
-private val OkGreen = Color(0xFF8FC07A)
 
 private enum class Tab(val label: String) { FROTA("Frota"), PEDIDOS("Pedidos"), DESPACHOS("Despachos") }
 
@@ -139,7 +138,7 @@ private fun Header(offline: Boolean, connected: Boolean, pedidos: Int) {
             }
             val statusColor = when {
                 offline -> Y.textDim
-                connected -> OkGreen
+                connected -> Y.ok
                 else -> Y.accent
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -212,7 +211,7 @@ private fun SessaoRow(s: Sessao, agora: Long) {
     val (glyph, color) = when (s.estado) {
         SessaoEstado.TRAVADA -> "◆" to Y.warn
         SessaoEstado.PERDIDA -> "✕" to Y.warn
-        SessaoEstado.RODANDO -> "●" to OkGreen
+        SessaoEstado.RODANDO -> "●" to Y.ok
         SessaoEstado.OCIOSA -> "○" to Y.textDim
         SessaoEstado.TERMINADA -> "·" to Y.textFaint
         SessaoEstado.DESCONHECIDO -> "?" to Y.textFaint
@@ -355,7 +354,7 @@ private fun FluxoChip(fluxo: String, onClick: () -> Unit) {
 private fun DespachoRow(d: Despacho) {
     val pillColor = when {
         d.estado.atencao -> Y.warn
-        d.estado.ativo -> OkGreen
+        d.estado.ativo -> Y.ok
         else -> Y.textDim
     }
     Row(
