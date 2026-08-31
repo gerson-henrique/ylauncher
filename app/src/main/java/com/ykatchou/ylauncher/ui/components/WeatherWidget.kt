@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ykatchou.ylauncher.data.weather.Weather
 import com.ykatchou.ylauncher.data.weather.WeatherRepository
-import com.ykatchou.ylauncher.ui.theme.HomeTextColor
+import com.ykatchou.ylauncher.ui.theme.Y
 import kotlinx.coroutines.delay
 
 /**
@@ -56,7 +56,7 @@ fun WeatherWidget(
             style = MaterialTheme.typography.displayLarge.copy(
                 fontSize = MaterialTheme.typography.displayLarge.fontSize * scale,
             ),
-            color = HomeTextColor,
+            color = Y.inkStrong,
             fontWeight = FontWeight.Light,
         )
     }

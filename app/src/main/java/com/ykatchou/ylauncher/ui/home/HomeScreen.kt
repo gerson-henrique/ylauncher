@@ -362,20 +362,12 @@ fun HomeScreen(
                         Box(modifier = Modifier.fillMaxWidth(0.5f)) {
                             com.ykatchou.ylauncher.ui.components.ProverbWidget()
                         }
-                        // Temperature stacked above the clock, on a smoked-glass card — the same
-                        // design-system surface as the proverb and the pinned-apps strip, so every
-                        // floating home widget reads as one language and stays legible over any
-                        // wallpaper. (The scrim stays reserved for the full-height utility column.)
+                        // Temperature stacked above the clock — bare ink over the crane painting,
+                        // no card (Tinta). Mirrors the proverb scroll on the opposite corner.
                         Column(
                             modifier = Modifier
                                 .weight(1f)
                                 .padding(end = com.ykatchou.ylauncher.ui.theme.Y.inset.screen),
-                            horizontalAlignment = Alignment.End,
-                        ) {
-                        Column(
-                            modifier = Modifier
-                                .glass(androidx.compose.foundation.shape.RoundedCornerShape(com.ykatchou.ylauncher.ui.theme.Y.radius.card))
-                                .padding(com.ykatchou.ylauncher.ui.theme.Y.inset.card),
                             horizontalAlignment = Alignment.End,
                         ) {
                         WeatherWidget(
@@ -402,7 +394,6 @@ fun HomeScreen(
                                 } catch (_: Exception) { }
                             },
                         )
-                        }
                         }
                     }
                 }
