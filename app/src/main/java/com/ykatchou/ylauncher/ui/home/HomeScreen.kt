@@ -318,7 +318,9 @@ fun HomeScreen(
                     .fillMaxSize()
                     .statusBarsPadding()
                     .navigationBarsPadding()
-                    .padding(vertical = if (isLandscape) 8.dp else 48.dp),
+                    // Small top inset so the clock + proverb sit just under the notification bar,
+                    // not floated a third of the way down; keep the original bottom breathing room.
+                    .padding(top = if (isLandscape) 8.dp else 8.dp, bottom = if (isLandscape) 8.dp else 48.dp),
                 verticalArrangement = Arrangement.SpaceBetween,
             ) {
                 // Top: weather on the left, clock on the right.
