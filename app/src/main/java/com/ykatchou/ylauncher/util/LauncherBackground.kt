@@ -19,7 +19,10 @@ object LauncherBackground {
     /** Bumped whenever the image changes, so the background composable reloads. */
     val version = MutableStateFlow(0)
 
-    fun file(context: Context): File = File(context.filesDir, "home_background.jpg")
+    // App-specific external storage when available (no permission to read, and reachable for
+    // debug seeding), falling back to internal files. Either way it is private to the app.
+    fun file(context: Context): File =
+        File(context.getExternalFilesDir(null) ?: context.filesDir, "home_background.jpg")
 
     fun exists(context: Context): Boolean = file(context).let { it.exists() && it.length() > 0 }
 

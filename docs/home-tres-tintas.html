@@ -1,0 +1,236 @@
+<title>Três Tintas</title>
+<style>
+  :root{
+    --paper:#efe8da; --paper-2:#e6ddca; --ink:#211d18; --ink-soft:#4b4339; --faint:#8a7d6a;
+    --line:#d6cab2; --seal:#b23b2e; --seal-soft:#c9614f; --mustard:#c69214; --mustard-ink:#8a6408;
+    --panel:#faf6ec;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --serif:"Songti SC","STSong",Georgia,"Times New Roman",serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    /* phone-screen ink tokens (shared by mockups) */
+    --wp:#e9e1d0; --wp-2:#d8ceb8; --scrn-ink:#2a251d; --scrn-dim:#6f6453; --scrn-faint:#9c8f79;
+    --glass:rgba(30,24,16,.30); --glass-line:rgba(255,255,255,.16); --glass-ink:#f3 ;
+  }
+  :root:not([data-theme="light"]){ @media (prefers-color-scheme:dark){
+    --paper:#16130f; --paper-2:#1e1a14; --ink:#efe6d6; --ink-soft:#c3b7a2; --faint:#8a7d68;
+    --line:#33291c; --seal:#e0705f; --seal-soft:#c9614f; --mustard:#e0b64b; --mustard-ink:#f0d283;
+    --panel:#211c14;
+  }}
+  :root[data-theme="dark"]{
+    --paper:#16130f; --paper-2:#1e1a14; --ink:#efe6d6; --ink-soft:#c3b7a2; --faint:#8a7d68;
+    --line:#33291c; --seal:#e0705f; --seal-soft:#c9614f; --mustard:#e0b64b; --mustard-ink:#f0d283;
+    --panel:#211c14;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1120px;margin:0 auto;padding:56px 24px 110px}
+  .seal-mark{font-family:var(--serif);display:inline-flex;align-items:center;justify-content:center;
+    width:40px;height:40px;border:2px solid var(--seal);color:var(--seal);border-radius:7px;font-size:22px;transform:rotate(-2deg)}
+  .eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--seal);margin:14px 0 12px}
+  h1{font-family:var(--serif);font-size:clamp(44px,8vw,74px);line-height:.98;margin:0 0 16px;font-weight:600;letter-spacing:.01em}
+  .lede{font-size:18.5px;color:var(--ink-soft);max-width:60ch;margin:0}
+  .lede b{color:var(--ink);font-weight:600}
+  h2{font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.16em;color:var(--seal);margin:60px 0 22px;display:flex;align-items:center;gap:12px}
+  h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:26px}
+  @media(max-width:900px){.grid{grid-template-columns:1fr;max-width:360px;margin:0 auto}}
+  .col .name{font-family:var(--serif);font-size:24px;margin:18px 0 2px;display:flex;align-items:baseline;gap:9px}
+  .col .zh{font-family:var(--serif);font-size:16px;color:var(--faint)}
+  .col .desc{font-size:14.5px;color:var(--ink-soft);margin:6px 0 0}
+  .col .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+  .tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.03em;padding:3px 8px;border-radius:20px;border:1px solid var(--line);color:var(--faint)}
+  /* phone */
+  .phone{aspect-ratio:9/19.2;border-radius:30px;padding:9px;background:#0d0b08;border:1px solid var(--line);box-shadow:0 22px 50px -24px rgba(0,0,0,.55)}
+  .scr{position:relative;height:100%;border-radius:23px;overflow:hidden;background:
+    radial-gradient(120% 80% at 78% 12%, var(--wp) 0%, var(--wp-2) 100%);
+    display:flex;flex-direction:column;color:var(--scrn-ink);font-size:11px}
+  /* faint ink crane silhouette to evoke the wallpaper */
+  .scr::before{content:"";position:absolute;right:-6%;bottom:-2%;width:62%;height:70%;opacity:.14;
+    background:radial-gradient(60% 50% at 50% 40%, #2a251d 0%, transparent 70%);pointer-events:none}
+  .sbar{display:flex;justify-content:space-between;align-items:center;padding:9px 14px 0;font-size:9.5px;color:var(--scrn-dim);font-weight:600}
+  .dockcol{position:absolute;right:8px;top:44%;transform:translateY(-50%);display:flex;flex-direction:column;gap:9px}
+  .ic{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+  .ic.wa{background:#25d366;color:#fff}.ic.ig{background:linear-gradient(45deg,#f9ce34,#ee2a7b,#6228d7);color:#fff}
+  .ic.sp{background:#1db954;color:#000}.ic.mp{background:#009ee3;color:#fff}
+  .bottombar{margin-top:auto;display:flex;align-items:center;justify-content:space-between;padding:0 16px 12px;color:var(--scrn-dim)}
+  .bottombar .home-ind{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);width:34%;height:4px;border-radius:3px;background:rgba(40,35,25,.35)}
+  .chip-lp{font-family:var(--mono);font-size:8.5px}
+  /* app rows shared */
+  .apps{display:flex;flex-direction:column;gap:7px}
+  .approw{display:flex;align-items:center;gap:8px}
+  .approw .nm{font-weight:600;font-size:11px}
+  .approw .nt{font-size:9px;color:var(--scrn-faint);line-height:1.15}
+  .badge{margin-left:auto;min-width:15px;height:15px;padding:0 4px;border-radius:9px;background:var(--mustard);color:#231a05;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center}
+
+  /* ---------- A · Tinta ---------- */
+  .A .body{position:relative;flex:1;padding:14px 16px}
+  .A .clock{position:absolute;right:16px;top:8px;text-align:right}
+  .A .clock .t{font-family:var(--serif);font-size:44px;line-height:.9;font-weight:300;letter-spacing:-1px}
+  .A .clock .m{font-size:9.5px;color:var(--scrn-dim);margin-top:2px}
+  .A .clock .w{font-size:13px;color:var(--scrn-dim)}
+  .A .scroll{position:absolute;left:14px;top:6px;writing-mode:vertical-rl;font-family:var(--serif);font-size:15px;letter-spacing:3px;color:var(--scrn-ink);height:52%}
+  .A .scroll small{font-size:9px;color:var(--scrn-faint)}
+  .A .pt{position:absolute;left:44px;top:8px;font-family:var(--serif);font-style:italic;font-size:12px;max-width:120px;color:var(--scrn-dim)}
+  .A .rail{position:absolute;left:14px;bottom:64px;display:flex;flex-direction:column;gap:11px}
+  .A .rail .ic{width:30px;height:30px;position:relative}
+  .A .rail .dot{position:absolute;top:-2px;right:-2px;width:8px;height:8px;border-radius:50%;background:var(--mustard);border:1.5px solid var(--wp)}
+  .A .statline{position:absolute;left:14px;right:14px;bottom:44px;font-family:var(--mono);font-size:8.5px;color:var(--scrn-faint);display:flex;gap:10px;border-top:1px solid rgba(40,35,25,.14);padding-top:5px}
+
+  /* ---------- B · Ficha ---------- */
+  .B .body{flex:1;padding:12px}
+  .B .dossier{background:var(--glass);backdrop-filter:blur(2px);border:1px solid var(--glass-line);border-radius:14px;padding:12px;width:74%;color:#f2ece0;display:flex;flex-direction:column;gap:10px}
+  .B .lbl{font-family:var(--mono);font-size:8px;letter-spacing:.14em;text-transform:uppercase;color:#b8ac97}
+  .B .clock .t{font-family:var(--sans);font-size:34px;font-weight:200;line-height:1;color:#fff}
+  .B .clock .sub{font-size:9px;color:#c9bda8;margin-top:2px}
+  .B .weather{position:absolute;right:14px;top:16px;text-align:right;color:#4b4339}
+  .B .weather .tw{font-size:22px;font-weight:300}
+  .B .div{height:1px;background:var(--glass-line)}
+  .B .prov{font-size:11px;color:#efe7d8}.B .prov .zh{font-family:var(--serif);color:#b8ac97;font-size:10px}
+  .B .apps .nm{color:#efe7d8}.B .apps .nt{color:#a99d88}
+  .B .stats{display:flex;flex-direction:column;gap:4px}
+  .B .bar{height:3px;border-radius:2px;background:rgba(255,255,255,.14);overflow:hidden}
+  .B .bar i{display:block;height:100%;background:var(--mustard)}
+  .B .srow{display:flex;justify-content:space-between;font-size:9px;color:#c9bda8}
+
+  /* ---------- C · Selo ---------- */
+  .C .body{flex:1;padding:14px 15px;display:flex;flex-direction:column;gap:12px}
+  .C .top{display:flex;justify-content:space-between;align-items:flex-start}
+  .C .clock .t{font-family:var(--sans);font-weight:800;font-size:40px;line-height:.85;color:var(--scrn-ink);letter-spacing:-1.5px}
+  .C .clock .m{font-size:9px;color:var(--scrn-dim);font-weight:600;text-transform:uppercase;letter-spacing:.08em}
+  .C .wbox{text-align:right}.C .wbox .tw{font-size:26px;font-weight:800;color:var(--scrn-ink)}
+  .C .quote{position:relative;background:var(--panel);border-radius:12px;padding:11px 12px 11px 14px;border-left:3px solid var(--seal)}
+  .C .quote .pt{font-weight:700;font-size:11.5px}
+  .C .quote .zh{font-family:var(--serif);font-size:10px;color:var(--faint);margin-top:3px}
+  .C .quote .seal{position:absolute;right:9px;bottom:8px;width:18px;height:18px;border:1.5px solid var(--seal);color:var(--seal);border-radius:4px;font-size:10px;font-family:var(--serif);display:flex;align-items:center;justify-content:center}
+  .C .chips{display:flex;flex-direction:column;gap:6px}
+  .C .chip{display:flex;align-items:center;gap:8px;background:var(--panel);border-radius:10px;padding:6px 8px}
+  .C .chip .nm{font-weight:600;font-size:10.5px}
+  .C .telemetry{margin-top:auto;display:flex;gap:6px}
+  .C .cell{flex:1;background:var(--panel);border-radius:9px;padding:6px 7px;text-align:center}
+  .C .cell .v{font-weight:800;font-size:13px}.C .cell .k{font-family:var(--mono);font-size:7.5px;letter-spacing:.06em;color:var(--faint);text-transform:uppercase}
+  .C .cell.hot .v{color:var(--seal)}
+
+  .foot{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);color:var(--faint);font-size:12.5px;font-family:var(--mono)}
+  .q{background:var(--paper-2);border-left:3px solid var(--mustard);border-radius:0 10px 10px 0;padding:14px 18px;margin:22px 0 0;font-size:15px;color:var(--ink-soft)}
+  .q b{color:var(--ink)}
+</style>
+
+<div class="wrap">
+  <span class="seal-mark">鶴</span>
+  <p class="eyebrow">ylauncher · redesenho da home · direções</p>
+  <h1>Três Tintas</h1>
+  <p class="lede">Três jeitos de tratar os mesmos componentes — relógio, provérbio, apps abertos,
+    telemetria e dock — cada um com uma atitude diferente sobre a pintura de tinta. Escolhe uma,
+    ou mistura pedaços (o relógio de uma, os apps de outra). Depois eu codo a escolhida.</p>
+
+  <h2>as três direções</h2>
+  <div class="grid">
+
+    <!-- A · TINTA -->
+    <div class="col A">
+      <div class="phone"><div class="scr">
+        <div class="sbar"><span>12:48</span><span>▽ ▽ ▽ · &nbsp; 35%</span></div>
+        <div class="body">
+          <div class="scroll">静如处子，动如脱兔 <small>孙子</small></div>
+          <div class="pt">Imóvel como quem espera, veloz como a lebre em fuga.</div>
+          <div class="clock">
+            <div class="t">12:48</div>
+            <div class="w">☀ 35°</div>
+            <div class="m">seg, 31 ago</div>
+          </div>
+          <div class="rail">
+            <div class="ic wa">✆<span class="dot"></span></div>
+            <div class="ic ig">◎</div>
+            <div class="ic mp">⤥</div>
+            <div class="ic sp">♪</div>
+          </div>
+          <div class="statline"><span>7,0 GB livres</span><span>CPU 27%</span><span>35°C</span></div>
+        </div>
+        <div class="bottombar"><span class="chip-lp">○ perso</span><span class="ic" style="background:#fff">◉</span><span>⊞</span></div>
+        <div class="home-ind"></div>
+      </div></div>
+      <div class="name">Tinta <span class="zh">水墨</span></div>
+      <p class="desc">O quadro respira. Nada de caixas: o relógio é fino e gigante, o provérbio pende
+        como um pergaminho vertical à esquerda, os apps viram só ícones com um ponto quando há aviso.
+        A telemetria é um sussurro embaixo. Máximo silêncio, casa com a pintura.</p>
+      <div class="tags"><span class="tag">sem vidro</span><span class="tag">tipo fino</span><span class="tag">pergaminho vertical</span><span class="tag">ícones sem texto</span></div>
+    </div>
+
+    <!-- B · FICHA -->
+    <div class="col B">
+      <div class="phone"><div class="scr">
+        <div class="sbar"><span>12:48</span><span>▽ ▽ ▽ · &nbsp; 35%</span></div>
+        <div class="body">
+          <div class="weather"><div class="tw">35°</div><div>☀</div></div>
+          <div class="dossier">
+            <div class="clock"><div class="t">12:48</div><div class="sub">segunda-feira, 31 agosto</div></div>
+            <div class="div"></div>
+            <div class="prov"><span class="lbl">provérbio</span><br>Imóvel como quem espera, veloz como a lebre em fuga.<br><span class="zh">静如处子，动如脱兔 · 孙子</span></div>
+            <div class="div"></div>
+            <div><span class="lbl">abertos</span>
+              <div class="apps" style="margin-top:6px">
+                <div class="approw"><span class="ic wa">✆</span><span class="nm">WhatsApp</span><span class="badge">8</span></div>
+                <div class="approw"><span class="ic ig">◎</span><span class="nm">Instagram</span><span class="badge">2</span></div>
+                <div class="approw"><span class="ic mp">⤥</span><span class="nm">Mercado Pago</span></div>
+              </div>
+            </div>
+            <div class="div"></div>
+            <div class="stats"><span class="lbl">sistema</span>
+              <div class="srow"><span>RAM</span><span>7,0 GB livres</span></div><div class="bar"><i style="width:38%"></i></div>
+              <div class="srow"><span>CPU</span><span>27%</span></div><div class="bar"><i style="width:27%"></i></div>
+            </div>
+          </div>
+        </div>
+        <div class="bottombar" style="color:#4b4339"><span class="chip-lp">● Perso</span><span class="ic" style="background:#fff">◉</span><span>⊞</span></div>
+        <div class="home-ind"></div>
+      </div></div>
+      <div class="name">Ficha <span class="zh">档案</span></div>
+      <p class="desc">Tudo num painel só — um "dossiê" de vidro fumê à esquerda, com rótulos em mono,
+        divisórias finas e hierarquia clara: relógio, provérbio, apps, sistema, de cima a baixo.
+        Organizado e legível como um cockpit. O clima fica solto no canto.</p>
+      <div class="tags"><span class="tag">painel único</span><span class="tag">rótulos mono</span><span class="tag">divisórias</span><span class="tag">denso e organizado</span></div>
+    </div>
+
+    <!-- C · SELO -->
+    <div class="col C">
+      <div class="phone"><div class="scr">
+        <div class="sbar"><span>12:48</span><span>▽ ▽ ▽ · &nbsp; 35%</span></div>
+        <div class="body">
+          <div class="top">
+            <div class="clock"><div class="t">12:48</div><div class="m">seg · 31 ago</div></div>
+            <div class="wbox"><div class="tw">35°</div><div style="font-size:9px;color:var(--scrn-dim)">☀ ensolarado</div></div>
+          </div>
+          <div class="quote">
+            <div class="pt">Imóvel como quem espera, veloz como a lebre em fuga.</div>
+            <div class="zh">静如处子，动如脱兔 · 孙子</div>
+            <div class="seal">鶴</div>
+          </div>
+          <div class="chips">
+            <div class="chip"><span class="ic wa">✆</span><span class="nm">WhatsApp</span><span class="badge">8</span></div>
+            <div class="chip"><span class="ic ig">◎</span><span class="nm">Instagram</span><span class="badge">2</span></div>
+          </div>
+          <div class="telemetry">
+            <div class="cell"><div class="v">7,0</div><div class="k">GB livre</div></div>
+            <div class="cell hot"><div class="v">27%</div><div class="k">CPU</div></div>
+            <div class="cell"><div class="v">35°</div><div class="k">temp</div></div>
+          </div>
+        </div>
+        <div class="bottombar" style="color:#4b4339"><span class="chip-lp">● Perso</span><span class="ic" style="background:#fff">◉</span><span>⊞</span></div>
+        <div class="home-ind"></div>
+      </div></div>
+      <div class="name">Selo <span class="zh">印</span></div>
+      <p class="desc">Gráfico e contrastado. Relógio pesado e blocado, o provérbio vira um card em
+        destaque com o selo vermelho da garça, os apps são chips arredondados com badge, e a
+        telemetria é uma faixa de células (a quente em vermelho). Usa o vermelho-selo + mostarda com coragem.</p>
+      <div class="tags"><span class="tag">tipo pesado</span><span class="tag">selo vermelho</span><span class="tag">apps em chips</span><span class="tag">telemetria em células</span></div>
+    </div>
+
+  </div>
+
+  <div class="q"><b>Como usar:</b> me diz qual direção te pegou — ou os pedaços que você quer de cada
+    (ex.: "relógio da Tinta + provérbio do Selo + apps da Ficha"). A partir disso eu reescrevo os
+    componentes em Compose, um de cada vez, testando no aparelho. Também dá pra ajustar cor, tamanho
+    e peso de tipo dentro da direção escolhida.</p></div>
+
+  <p class="foot">desenho antes do código · mesmos dados, três atitudes · sobre a pintura 白鶴派</p>
+</div>
