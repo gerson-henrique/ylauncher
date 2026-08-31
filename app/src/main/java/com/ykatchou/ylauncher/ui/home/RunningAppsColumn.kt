@@ -1,7 +1,9 @@
 package com.ykatchou.ylauncher.ui.home
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,15 +16,22 @@ import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.ykatchou.ylauncher.R
 import com.ykatchou.ylauncher.data.model.AppInfo
 import com.ykatchou.ylauncher.data.model.AppNotification
+import com.ykatchou.ylauncher.ui.theme.Y
 
 /**
  * The left column: what is open right now. Tapping an entry resumes it, so the column doubles as
@@ -48,7 +57,40 @@ fun RunningAppsColumn(
     // says less than the empty space does, on a home screen whose whole point is quiet.
     if (apps.isEmpty()) return
 
-    Column(modifier = modifier.verticalScroll(rememberScrollState())) {
+    val scrollState = rememberScrollState()
+    // A slim mustard scrollbar on the inner edge, shown only when the open apps overflow the
+    // column — the cue that there is more below (or above) than fits. It fades in with the
+    // overflow and rides the scroll position; no track, so it stays quiet on a calm home.
+    val overflow = scrollState.maxValue > 0
+    val barAlpha by animateFloatAsState(if (overflow) 1f else 0f, label = "runningScrollbar")
+    val density = LocalDensity.current
+
+    BoxWithConstraints(modifier = modifier) {
+        val viewportPx = with(density) { maxHeight.toPx() }
+        val thumbW = with(density) { 3.dp.toPx() }
+        val minThumb = with(density) { 24.dp.toPx() }
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(scrollState)
+                .drawWithContent {
+                    drawContent()
+                    if (barAlpha <= 0f || scrollState.maxValue <= 0) return@drawWithContent
+                    val contentPx = viewportPx + scrollState.maxValue
+                    val thumbH = (viewportPx * viewportPx / contentPx).coerceAtLeast(minThumb)
+                    val progress = scrollState.value.toFloat() / scrollState.maxValue
+                    // Anchor to the current scroll offset so the thumb rides *inside* the viewport,
+                    // not off with the scrolled content.
+                    val top = scrollState.value + progress * (viewportPx - thumbH)
+                    drawRoundRect(
+                        color = Y.accent.copy(alpha = 0.85f * barAlpha),
+                        topLeft = Offset(size.width - thumbW, top),
+                        size = Size(thumbW, thumbH),
+                        cornerRadius = CornerRadius(thumbW / 2, thumbW / 2),
+                    )
+                },
+        ) {
         apps.forEach { app ->
             // Keyed by package so the dismiss state belongs to the app, not to a list position —
             // without this, closing one app hands its half-swiped state to whoever shifts up.
@@ -125,6 +167,7 @@ fun RunningAppsColumn(
                     }
                 }
             }
+        }
         }
     }
 }
