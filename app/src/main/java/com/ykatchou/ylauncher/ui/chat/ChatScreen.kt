@@ -77,6 +77,9 @@ fun ChatScreen(viewModel: ChatViewModel = hiltViewModel()) {
 
     ModalNavigationDrawer(
         drawerState = drawerState,
+        // Only the ☰ button (and a scrim tap) work the drawer. Edge-swipe-to-open would eat the
+        // pager's horizontal swipe, trapping you on the Ruby page with no way back to the home.
+        gesturesEnabled = drawerState.isOpen,
         drawerContent = {
             ModalDrawerSheet(drawerContainerColor = DrawerBackground) {
                 ConversasDrawer(
