@@ -1,19 +1,25 @@
 package com.ykatchou.ylauncher.ui.components
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ykatchou.ylauncher.ui.theme.ProverbBrush
 import com.ykatchou.ylauncher.ui.theme.Y
-import com.ykatchou.ylauncher.ui.theme.glass
 
 /** A proverb: Portuguese, its authentic Chinese source, and the author (romanized + 中文). */
 data class Proverbio(val pt: String, val zh: String, val autor: String, val autorZh: String)
@@ -151,44 +157,56 @@ val PROVERBIOS: List<Proverbio> =
 /** A proverb at random — re-rolled each time the home enters composition (app launch / return). */
 fun proverbioAleatorio(): Proverbio = PROVERBIOS.random()
 
+/** Ink, translucent, for the Chinese proverb — it pauses on the painting without fighting the read. */
+private val ZhInk = Y.inkStrong.copy(alpha = 0.42f)
+
+/**
+ * The proverb, "Tinta" style: the Chinese hangs vertically like a scroll (translucent brush), its
+ * author 中文 stamped in seal red to the left like a signature; the translation sits to the right in
+ * ink, with the romanized author under it, also in seal red. Ink on the light crane painting — no
+ * card, no box. The brush face ([ProverbBrush]) is a bundled calligraphic CJK font.
+ */
 @Composable
 fun ProverbWidget(modifier: Modifier = Modifier) {
     val p = remember { proverbioAleatorio() }
-    // Smoked-glass card — the design system's surface for a floating home widget, the same one the
-    // pinned-apps strip uses — so the proverb reads as one language with the rest of the home and
-    // stays legible over any wallpaper, light crane or dark. (The scrim is reserved for the
-    // full-height utility column, where its top/bottom fade actually has room to work.)
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .glass(RoundedCornerShape(Y.radius.card))
-            .padding(horizontal = Y.space.md, vertical = Y.space.sm),
-    ) {
-        // Portuguese, in white, bold and centred — the line you read.
-        Text(
-            text = p.pt,
-            style = Y.type.body.copy(lineHeight = 22.sp),
-            color = Y.text,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
+    Row(modifier = modifier.padding(start = 4.dp, top = 4.dp), verticalAlignment = Alignment.Top) {
+        // The Chinese, vertical: author (signature) to the left, proverb to the right.
+        VerticalCjk(
+            text = p.autorZh,
+            style = Y.type.body.copy(fontFamily = ProverbBrush, fontSize = 13.sp),
+            color = Y.seal,
         )
-        // The Chinese source, centred and unbold, in the same dim as the clock's weekday.
-        Text(
+        Spacer(Modifier.width(5.dp))
+        VerticalCjk(
             text = p.zh,
-            style = Y.type.bodySm.copy(letterSpacing = 1.sp),
-            color = Y.textDim,
-            fontWeight = FontWeight.Normal,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+            style = Y.type.title.copy(fontFamily = ProverbBrush, fontSize = 20.sp, lineHeight = 22.sp),
+            color = ZhInk,
         )
-        // The author, centred: 中文 · romanização.
-        Text(
-            text = "${p.autorZh} · ${p.autor}",
-            style = Y.type.caption,
-            color = Y.textFaint,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
-        )
+        Spacer(Modifier.width(Y.space.md))
+        // The translation and its author, to the side.
+        Column(modifier = Modifier.widthIn(max = 150.dp).padding(top = 2.dp)) {
+            Text(
+                text = p.pt,
+                style = Y.type.bodySm.copy(fontStyle = FontStyle.Italic, lineHeight = 16.sp),
+                color = Y.ink,
+                fontWeight = FontWeight.Medium,
+            )
+            Text(
+                text = p.autor,
+                style = Y.type.caption,
+                color = Y.seal,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+    }
+}
+
+/** Stacks CJK characters top-to-bottom, upright — true vertical writing, which Compose has no mode for. */
+@Composable
+private fun VerticalCjk(text: String, style: TextStyle, color: Color) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(1.dp)) {
+        text.forEach { ch ->
+            Text(text = ch.toString(), style = style, color = color)
+        }
     }
 }

@@ -43,6 +43,21 @@ object Y {
     /** Ruby's own colour — her voice in the chat, and her presence dot. */
     val ruby = Color(0xFFE0555F)
 
+    /**
+     * The "Tinta" (ink-on-paper) palette — dark ink over the light ink-painting wallpaper, the
+     * opposite of the white [text] used on dark wallpapers. The home draws its own light crane
+     * wallpaper now, so its type is ink, and its one accent is the seal red (印) of the painting's
+     * stamps. [paper] is the warm strip the phone data sits on.
+     */
+    val inkStrong = Color(0xFF241F18)
+    val ink = Color(0xFF332C20)
+    val inkDim = Color(0xFF6A6151)
+    val inkFaint = Color(0xFF9A8C74)
+    val seal = Color(0xFFB23B2E)
+    val jade = Color(0xFF5F8A4F)
+    val paperTop = Color(0xFFF6F0E3)
+    val paperBottom = Color(0xFFEBE2D0)
+
     /** Text on the wallpaper, in three weights. Pair with [textShadow] for readability. */
     val text = HomeTextColor
     val textDim = HomeTextColorDim
