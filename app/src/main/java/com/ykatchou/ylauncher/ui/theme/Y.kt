@@ -85,7 +85,12 @@ object Y {
         val chip: Dp = 12.dp
     }
 
-    /** A 4dp-based spacing scale — gaps and paddings come from here, not ad-hoc dp. */
+    /**
+     * The raw 4dp gap scale — the *sizes* space can take. Use it for gaps between items and generic
+     * padding (`Arrangement.spacedBy(Y.space.sm)`, `.padding(Y.space.md)`). When a value has a
+     * meaning — a screen margin, the top inset, a card's inner padding — name it through [inset]
+     * instead, so intent survives and a later change lands in one place.
+     */
     object space {
         val xs: Dp = 4.dp
         val sm: Dp = 8.dp
@@ -93,6 +98,23 @@ object Y {
         val lg: Dp = 16.dp
         val xl: Dp = 24.dp
         val xxl: Dp = 32.dp
+    }
+
+    /**
+     * Semantic margins — what a spacing is *for*, mapped onto [space] so the scale stays the single
+     * source of sizes. Reach for these at layout edges; reach for [space] for gaps between siblings.
+     */
+    object inset {
+        /** Page / content margin from the screen border — the default edge gutter. */
+        val screen: Dp = space.lg
+        /** Inner padding inside a glass card or panel, between its edge and its content. */
+        val card: Dp = space.md
+        /** Gap between two major sections of a screen. */
+        val section: Dp = space.xl
+        /** Content top inset, so the top row sits just under the status / notification bar. */
+        val topBar: Dp = space.sm
+        /** Breathing room at the bottom, above the gesture / navigation bar. */
+        val bottomSafe: Dp = 48.dp
     }
 
     /**

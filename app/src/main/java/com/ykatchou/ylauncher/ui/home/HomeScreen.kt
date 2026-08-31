@@ -318,9 +318,12 @@ fun HomeScreen(
                     .fillMaxSize()
                     .statusBarsPadding()
                     .navigationBarsPadding()
-                    // Small top inset so the clock + proverb sit just under the notification bar,
-                    // not floated a third of the way down; keep the original bottom breathing room.
-                    .padding(top = if (isLandscape) 8.dp else 8.dp, bottom = if (isLandscape) 8.dp else 48.dp),
+                    // Top row sits just under the notification bar; keep the bottom breathing room.
+                    .padding(
+                        top = com.ykatchou.ylauncher.ui.theme.Y.inset.topBar,
+                        bottom = if (isLandscape) com.ykatchou.ylauncher.ui.theme.Y.inset.topBar
+                        else com.ykatchou.ylauncher.ui.theme.Y.inset.bottomSafe,
+                    ),
                 verticalArrangement = Arrangement.SpaceBetween,
             ) {
                 // Top: weather on the left, clock on the right.
@@ -350,13 +353,13 @@ fun HomeScreen(
                         Column(
                             modifier = Modifier
                                 .weight(1f)
-                                .padding(end = 20.dp),
+                                .padding(end = com.ykatchou.ylauncher.ui.theme.Y.inset.screen),
                             horizontalAlignment = Alignment.End,
                         ) {
                         Column(
                             modifier = Modifier
                                 .glass(androidx.compose.foundation.shape.RoundedCornerShape(com.ykatchou.ylauncher.ui.theme.Y.radius.card))
-                                .padding(horizontal = com.ykatchou.ylauncher.ui.theme.Y.space.md, vertical = com.ykatchou.ylauncher.ui.theme.Y.space.sm),
+                                .padding(com.ykatchou.ylauncher.ui.theme.Y.inset.card),
                             horizontalAlignment = Alignment.End,
                         ) {
                         WeatherWidget(
