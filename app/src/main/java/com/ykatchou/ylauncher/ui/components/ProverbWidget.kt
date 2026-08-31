@@ -163,7 +163,7 @@ fun ProverbWidget(modifier: Modifier = Modifier) {
         // Portuguese, in white, bold and centred — the line you read.
         Text(
             text = p.pt,
-            style = Y.type.body.copy(shadow = Y.textShadow, lineHeight = 22.sp),
+            style = Y.type.body.copy(lineHeight = 22.sp),
             color = Y.text,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
@@ -172,7 +172,7 @@ fun ProverbWidget(modifier: Modifier = Modifier) {
         // The Chinese source, centred and unbold, in the same dim as the clock's weekday.
         Text(
             text = p.zh,
-            style = Y.type.bodySm.copy(shadow = Y.textShadow, letterSpacing = 1.sp),
+            style = Y.type.bodySm.copy(letterSpacing = 1.sp),
             color = Y.textDim,
             fontWeight = FontWeight.Normal,
             textAlign = TextAlign.Center,
@@ -181,7 +181,7 @@ fun ProverbWidget(modifier: Modifier = Modifier) {
         // The author, centred: 中文 · romanização.
         Text(
             text = "${p.autorZh} · ${p.autor}",
-            style = Y.type.caption.copy(shadow = Y.textShadow),
+            style = Y.type.caption,
             color = Y.textFaint,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth().padding(top = 2.dp),

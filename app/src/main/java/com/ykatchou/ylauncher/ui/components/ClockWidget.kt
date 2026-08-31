@@ -14,7 +14,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.ykatchou.ylauncher.ui.theme.WallpaperTextShadow
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -45,13 +44,13 @@ fun ClockWidget(
     ) {
         Text(
             text = timeFormat.format(date),
-            style = MaterialTheme.typography.displayLarge.copy(shadow = WallpaperTextShadow),
+            style = MaterialTheme.typography.displayLarge,
             color = com.ykatchou.ylauncher.ui.theme.HomeTextColor,
             modifier = Modifier.clickable { onClockClick() },
         )
         Text(
             text = dateFormat.format(date),
-            style = MaterialTheme.typography.labelLarge.copy(shadow = WallpaperTextShadow),
+            style = MaterialTheme.typography.labelLarge,
             color = com.ykatchou.ylauncher.ui.theme.HomeTextColorDim,
             modifier = Modifier
                 .padding(top = 2.dp)

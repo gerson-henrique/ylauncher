@@ -18,7 +18,6 @@ import androidx.compose.ui.unit.sp
 import com.ykatchou.ylauncher.data.weather.Weather
 import com.ykatchou.ylauncher.data.weather.WeatherRepository
 import com.ykatchou.ylauncher.ui.theme.HomeTextColor
-import com.ykatchou.ylauncher.ui.theme.WallpaperTextShadow
 import kotlinx.coroutines.delay
 
 /**
@@ -55,7 +54,6 @@ fun WeatherWidget(
         Text(
             text = "${current.temperatureCelsius}°",
             style = MaterialTheme.typography.displayLarge.copy(
-                shadow = WallpaperTextShadow,
                 fontSize = MaterialTheme.typography.displayLarge.fontSize * scale,
             ),
             color = HomeTextColor,
