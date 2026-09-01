@@ -1,6 +1,7 @@
 package com.ykatchou.ylauncher.ui.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,10 +23,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ykatchou.ylauncher.R
 import com.ykatchou.ylauncher.data.stats.SystemStats
-import com.ykatchou.ylauncher.ui.theme.HomeAccent
-import com.ykatchou.ylauncher.ui.theme.HomeTextColor
-import com.ykatchou.ylauncher.ui.theme.HomeTextColorDim
-import com.ykatchou.ylauncher.ui.theme.HomeWarn
+import androidx.compose.ui.graphics.Brush
+import com.ykatchou.ylauncher.ui.theme.Y
 import kotlin.math.abs
 
 /**
@@ -42,7 +41,11 @@ fun SystemStatsPanel(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier.padding(horizontal = 8.dp),
+        modifier = modifier
+            .clip(RoundedCornerShape(Y.radius.card))
+            .background(Brush.verticalGradient(listOf(Y.paperTop, Y.paperBottom)))
+            .border(1.dp, Color(0x33786950), RoundedCornerShape(Y.radius.card))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         stats.memUsedFraction?.let { used ->
@@ -88,7 +91,7 @@ fun SystemStatsPanel(
                 Text(
                     text = "↓${stats.netRxBytesPerSec.toRate()}  ↑${stats.netTxBytesPerSec.toRate()}",
                     style = MaterialTheme.typography.labelSmall,
-                    color = HomeTextColor,
+                    color = Y.ink,
                     fontWeight = FontWeight.Medium,
                 )
             }
@@ -96,7 +99,7 @@ fun SystemStatsPanel(
                 Text(
                     text = pluralStringResource(R.plurals.stat_services, count, count),
                     style = MaterialTheme.typography.labelSmall,
-                    color = HomeTextColorDim,
+                    color = Y.inkDim,
                 )
             }
         }
@@ -112,7 +115,7 @@ fun SystemStatsPanel(
                         abs(ma),
                     ),
                     style = MaterialTheme.typography.labelSmall,
-                    color = HomeTextColor,
+                    color = Y.ink,
                     fontWeight = FontWeight.Medium,
                 )
             }
@@ -120,7 +123,7 @@ fun SystemStatsPanel(
                 Text(
                     text = stringResource(R.string.stat_celsius, "%.0f".format(temp)),
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (temp >= HOT_CELSIUS) HomeWarn else HomeTextColorDim,
+                    color = if (temp >= HOT_CELSIUS) Y.seal else Y.inkDim,
                 )
             }
         }
@@ -145,12 +148,12 @@ private fun StatRow(
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
-                color = HomeTextColorDim,
+                color = Y.inkDim,
             )
             Text(
                 text = value,
                 style = MaterialTheme.typography.labelSmall,
-                color = HomeTextColor,
+                color = Y.ink,
                 fontWeight = FontWeight.Medium,
             )
         }
@@ -161,14 +164,14 @@ private fun StatRow(
                 .fillMaxWidth()
                 .height(3.dp)
                 .clip(RoundedCornerShape(2.dp))
-                .background(HomeTextColorDim.copy(alpha = 0.25f)),
+                .background(Y.inkDim.copy(alpha = 0.25f)),
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth(fraction.coerceIn(0f, 1f))
                     .height(3.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(if (warn) HomeWarn else HomeAccent),
+                    .background(if (warn) Y.seal else StatBar),
             )
         }
     }
@@ -184,6 +187,7 @@ private fun Long?.toRate(): String = when {
     else -> "0 KB/s"
 }
 
+private val StatBar = Color(0xFF7D715C)
 private const val HOT_CELSIUS = 42f
 private const val BUSY_FRACTION = 0.85f
 private const val LOW_FRACTION = 0.15f

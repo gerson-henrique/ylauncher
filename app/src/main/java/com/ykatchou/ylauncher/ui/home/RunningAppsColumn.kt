@@ -1,34 +1,42 @@
 package com.ykatchou.ylauncher.ui.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.unit.dp
-import com.ykatchou.ylauncher.R
 import com.ykatchou.ylauncher.data.model.AppInfo
 import com.ykatchou.ylauncher.data.model.AppNotification
+import com.ykatchou.ylauncher.ui.components.AppIcon
+import com.ykatchou.ylauncher.ui.theme.ProverbBrush
+import com.ykatchou.ylauncher.ui.theme.Y
 
 /**
- * The left column: what is open right now. Tapping an entry resumes it, so the column doubles as
- * a task switcher; dragging one aside ends it.
+ * The open apps as a "perch of ink": the icons roost along a vertical brushstroke, and dragging one
+ * aside ends it — the app flies off, in keeping with the birds in the painting. No labels, no
+ * notification preview text: just the icon and, when something is waiting, a seal stamped with the
+ * count in a Chinese numeral. Tapping resumes the app, so the column doubles as a task switcher.
  *
- * Drag rather than a close button, because the row is already narrow with a label in it, and
- * because a stray tap on a small target would kill an app with no undo — force-stop discards
- * unsaved state and the process is gone. Hence the deliberately generous drag threshold below.
+ * Drag rather than a close button, and a generous threshold: force-stop has no undo, so ending an
+ * app should take a decided gesture, never a stray tap.
  */
 @Composable
 fun RunningAppsColumn(
@@ -37,94 +45,100 @@ fun RunningAppsColumn(
     onOpen: (AppInfo) -> Unit,
     onClose: (AppInfo) -> Unit,
     notifications: Map<String, AppNotification>,
-    showNotifPreview: Boolean,
+    @Suppress("UNUSED_PARAMETER") showNotifPreview: Boolean,
     showNotifBadge: Boolean,
-    onDismissNotification: (String) -> Unit,
+    @Suppress("UNUSED_PARAMETER") onDismissNotification: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Nothing open draws nothing at all. A placeholder would be text asking to be read that
-    // says less than the empty space does, on a home screen whose whole point is quiet.
+    // Nothing open draws nothing at all — the quiet home is the point.
     if (apps.isEmpty()) return
 
-    // No scroll here: a vertical drag on this column is the open-app-drawer / close-app gesture,
-    // so making it scroll fought both. The column shows what fits; overflow handling comes later.
-    Column(modifier = modifier) {
+    val stem = Y.inkStrong.copy(alpha = 0.55f)
+    Column(
+        modifier = modifier.drawBehind {
+            // The branch: a vertical ink stroke the icons perch to the right of, fading at its ends.
+            val x = 3.dp.toPx()
+            drawLine(
+                brush = Brush.verticalGradient(
+                    listOf(stem.copy(alpha = 0.15f), stem, stem.copy(alpha = 0.08f)),
+                ),
+                start = Offset(x, 6.dp.toPx()),
+                end = Offset(x, size.height - 6.dp.toPx()),
+                strokeWidth = 2.dp.toPx(),
+                cap = StrokeCap.Round,
+            )
+        },
+    ) {
         apps.forEach { app ->
-            // Keyed by package so the dismiss state belongs to the app, not to a list position —
-            // without this, closing one app hands its half-swiped state to whoever shifts up.
             key(app.packageName) {
-                // allowNotifSwipe is off inside the closeable column: there, the drag belongs to
-                // closing the app, so the inner notification-dismiss box must not sit on top of it
-                // and swallow the gesture. The badge/preview still show — only the swipe is gone.
-                val item = @Composable { itemModifier: Modifier, allowNotifSwipe: Boolean ->
-                    FavoriteItem(
-                        appInfo = app,
-                        displayName = app.appLabel,
-                        onClick = { onOpen(app) },
-                        notification = notifications[app.packageName],
-                        showNotifPreview = showNotifPreview,
-                        showNotifBadge = showNotifBadge,
-                        onDismissNotification = if (allowNotifSwipe) {
-                            { onDismissNotification(app.packageName) }
-                        } else {
-                            null
-                        },
-                        modifier = itemModifier,
-                    )
+                val notif = notifications[app.packageName]
+                val perch = @Composable { itemModifier: Modifier ->
+                    Box(modifier = itemModifier.padding(start = 12.dp, top = 7.dp, bottom = 7.dp)) {
+                        AppIcon(
+                            packageName = app.packageName,
+                            activityClassName = app.activityClassName,
+                            user = app.userHandle,
+                            size = 44.dp,
+                            sizePx = 44,
+                            contentDescription = app.appLabel,
+                            modifier = Modifier.clickable { onOpen(app) },
+                        )
+                        if (showNotifBadge && notif != null && notif.count > 0) {
+                            SealCount(
+                                count = notif.count,
+                                modifier = Modifier.align(Alignment.TopEnd).offset(x = 4.dp, y = (-4).dp),
+                            )
+                        }
+                    }
                 }
 
                 if (!canClose) {
-                    item(Modifier, true)
+                    perch(Modifier)
                 } else {
                     val dismissState = rememberSwipeToDismissBoxState(
-                        // Half the width. Closing cannot be undone, so it should take a decided
-                        // gesture — better to under-trigger than to kill a chat mid-message.
                         positionalThreshold = { distance -> distance * 0.5f },
                         confirmValueChange = { value ->
                             if (value != SwipeToDismissBoxValue.Settled) onClose(app)
-                            // Never confirm the dismiss. Accepting it parks the box in its
-                            // displaced state, which pushes the row off-screen and leaves the red
-                            // "Close" backdrop sitting there — a column of empty red bands once a
-                            // few apps have been closed. The list is the source of truth: the row
-                            // disappears when the app is gone from it, not because the widget
-                            // moved. Refusing here also makes a failed close self-correcting,
-                            // since the row simply springs back.
+                            // Never confirm: the list is the source of truth. The row disappears
+                            // when the app is gone from it, and a failed close springs back.
                             false
                         },
                     )
+                    // No red "Close" backdrop — the drift + spring is the whole gesture, quiet like
+                    // the rest of the painting.
                     SwipeToDismissBox(
                         state = dismissState,
-                        backgroundContent = {
-                            // Only while a drag is actually under way. Drawn unconditionally it
-                            // sits behind every row all the time, tinting the column red and
-                            // printing "Close" across the app names.
-                            val direction = dismissState.dismissDirection
-                            if (direction != SwipeToDismissBoxValue.Settled) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(Color.Red.copy(alpha = 0.25f)),
-                                    contentAlignment = if (direction == SwipeToDismissBoxValue.StartToEnd) {
-                                        Alignment.CenterStart
-                                    } else {
-                                        Alignment.CenterEnd
-                                    },
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.close),
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = Color.White,
-                                        modifier = Modifier.padding(horizontal = 16.dp),
-                                    )
-                                }
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
+                        backgroundContent = {},
                     ) {
-                        item(Modifier, false)
+                        perch(Modifier)
                     }
                 }
             }
         }
     }
+}
+
+/** A seal stamped with the notification count, in a Chinese numeral. */
+@Composable
+private fun SealCount(count: Int, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .rotate(-5f)
+            .background(Y.seal, RoundedCornerShape(4.dp))
+            .border(1.5.dp, Y.paperTop, RoundedCornerShape(4.dp))
+            .padding(horizontal = 3.dp, vertical = 1.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = chineseNumeral(count),
+            style = Y.type.caption.copy(fontFamily = ProverbBrush),
+            color = Y.paperTop,
+        )
+    }
+}
+
+/** 1–10 as 一…十; anything above as 十+ — a seal has no room for 二十七, and the exact count past ten rarely matters at a glance. */
+private fun chineseNumeral(n: Int): String = when (n) {
+    in 1..10 -> "一二三四五六七八九十"[n - 1].toString()
+    else -> "十+"
 }
