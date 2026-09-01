@@ -425,7 +425,8 @@ fun HomeScreen(
                                     // above stay free, so the swipe to the left page still has a
                                     // place to begin.
                                     .onGloballyPositioned { onLeftColumnBounds(it.boundsInRoot()) },
-                                contentAlignment = Alignment.Center,
+                                // Perch hugs the top-left edge (Tinta), not centred in the column.
+                                contentAlignment = Alignment.TopStart,
                             ) {
                                 val runningApps by viewModel.runningApps.collectAsState()
                                 val canClose by viewModel.canCloseRunningApps.collectAsState()
