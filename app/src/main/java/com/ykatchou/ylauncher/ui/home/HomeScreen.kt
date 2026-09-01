@@ -99,6 +99,7 @@ import com.ykatchou.ylauncher.ui.onboarding.OnboardingTourOverlay
 import com.ykatchou.ylauncher.ui.theme.HomeTextColor
 import com.ykatchou.ylauncher.ui.theme.HomeTextColorDim
 import com.ykatchou.ylauncher.ui.theme.WallpaperTextShadow
+import com.ykatchou.ylauncher.ui.theme.Y
 import com.ykatchou.ylauncher.ui.theme.glass
 import com.ykatchou.ylauncher.util.AppLauncher
 import com.ykatchou.ylauncher.util.expandNotificationDrawer
@@ -410,26 +411,9 @@ fun HomeScreen(
                             .weight(1f)
                             .fillMaxHeight(),
                     ) {
-                        // Gradient scrim for readability. Deeper than upstream because this
-                        // column now carries the stats panel too — small text and 3dp meter bars,
-                        // which need more separation from the wallpaper than app labels did.
-                        // Still fades to transparent at both ends so it reads as shading rather
-                        // than a panel drawn over the wallpaper.
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(
-                                    Brush.verticalGradient(
-                                        colors = listOf(
-                                            Color.Transparent,
-                                            Color.Black.copy(alpha = 0.28f),
-                                            Color.Black.copy(alpha = 0.42f),
-                                            Color.Black.copy(alpha = 0.28f),
-                                            Color.Transparent,
-                                        ),
-                                    )
-                                )
-                        )
+                        // No scrim (Tinta): the perch icons are colourful over the light painting
+                        // and the stats sit on their own warm-paper strip — a dark scrim would only
+                        // muddy the crane.
                         // Two thirds for what is open, one third for what it costs.
                         Column(modifier = Modifier.fillMaxSize()) {
                             Box(
@@ -619,10 +603,8 @@ fun HomeScreen(
                             val isActive = panel.id == activePanel
                             Text(
                                 text = if (isActive) "● ${panel.name}" else "○ ${panel.name}",
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    shadow = WallpaperTextShadow,
-                                ),
-                                color = if (isActive) HomeTextColor else HomeTextColorDim,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (isActive) Y.ink else Y.inkFaint,
                                 modifier = Modifier
                                     .clickable(
                                         interactionSource = null,
