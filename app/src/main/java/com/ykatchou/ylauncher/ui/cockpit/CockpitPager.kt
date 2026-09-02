@@ -78,7 +78,7 @@ fun CockpitPager(
             modifier = Modifier.fillMaxSize(),
         ) { page ->
             when (page) {
-                PAGE_ORCHESTRATOR -> com.ykatchou.ylauncher.ui.chat.ChatScreen()
+                PAGE_ORCHESTRATOR -> com.ykatchou.ylauncher.ui.orchestrator.CricketScreen()
                 PAGE_HOME -> HomeScreen(
                     onNavigateToAbout = onNavigateToAbout,
                     onNavigateToSettings = onNavigateToSettings,

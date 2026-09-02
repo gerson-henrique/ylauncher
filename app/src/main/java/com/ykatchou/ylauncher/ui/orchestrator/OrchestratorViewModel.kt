@@ -28,6 +28,9 @@ import javax.inject.Inject
 /** Which face the orchestrator page is showing. */
 enum class Phase { LOADING, PAIRING, READY, UNREACHABLE }
 
+/** A loose remark in the mural — either Cricket's own (mine=false) or the command you sent (mine=true). */
+data class Recado(val id: Long, val texto: String, val mine: Boolean)
+
 data class OrchestratorState(
     val phase: Phase = Phase.LOADING,
     /** SSE is connected and pushing — drives "ao vivo" vs "religando". */
@@ -42,6 +45,8 @@ data class OrchestratorState(
     val fluxos: List<String> = emptyList(),
     /** Last thing the Ruby said — shown once as a toast, then consumed. */
     val fala: String? = null,
+    /** Rolling recados for the mural (your commands + Cricket's remarks), newest last, capped. */
+    val recados: List<Recado> = emptyList(),
     /** Set briefly after a failed pairing attempt, to explain why. */
     val pairingError: String? = null,
 )
@@ -59,7 +64,10 @@ class OrchestratorViewModel @Inject constructor(
     private val api: RubyApi,
     private val events: RubyEventStream,
     private val config: RubyConfig,
+    private val socket: com.ykatchou.ylauncher.data.ruby.RubyChatSocket,
 ) : ViewModel() {
+
+    private var recadoId = 0L
 
     private val _state = MutableStateFlow(OrchestratorState())
     val state: StateFlow<OrchestratorState> = _state.asStateFlow()
@@ -205,7 +213,10 @@ class OrchestratorViewModel @Inject constructor(
                 s.copy(sessoes = merged.sortedByParada(s.agora))
             }
 
-            is Evento.Fala -> _state.update { it.copy(fala = evento.texto) }
+            is Evento.Fala -> {
+                val r = Recado(recadoId++, evento.texto, mine = false)
+                _state.update { it.copy(fala = evento.texto, recados = (it.recados + r).takeLast(6)) }
+            }
 
             Evento.Pulso, Evento.Desconhecido -> Unit // keep-alive / forward-compat: nothing to do
         }
@@ -241,6 +252,27 @@ class OrchestratorViewModel @Inject constructor(
 
     fun disparar(fluxo: String) {
         viewModelScope.launch { api.disparar(fluxo) }
+    }
+
+    /**
+     * Send a free-text command to Cricket over the /ws. Echoes it as a recado immediately; her reply
+     * arrives on the SSE `fala` stream (already listened) and lands as another recado. A short-lived
+     * socket: open, send on connect, drop — the reply does not need it held open.
+     */
+    fun mandar(texto: String) {
+        val t = texto.trim()
+        if (t.isEmpty()) return
+        val mine = Recado(recadoId++, t, mine = true)
+        _state.update { it.copy(recados = (it.recados + mine).takeLast(6)) }
+        viewModelScope.launch {
+            val j = launch {
+                socket.open().collect { msg ->
+                    if (msg is com.ykatchou.ylauncher.data.ruby.ChatEvent.Connected) socket.falar(t, null)
+                }
+            }
+            delay(3000)
+            j.cancel()
+        }
     }
 
     fun consumeFala() = _state.update { it.copy(fala = null) }
