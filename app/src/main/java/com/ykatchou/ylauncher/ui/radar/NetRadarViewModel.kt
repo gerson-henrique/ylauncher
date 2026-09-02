@@ -31,6 +31,9 @@ data class RadarLine(
 
 data class RadarSummary(val bytesPerSec: Long, val appsOnNet: Int, val topOrg: String)
 
+/** Shizuku's health, as the Sala de Máquinas needs to show and act on it. */
+enum class ShizukuState { UP, NEEDS_PERMISSION, DOWN }
+
 /**
  * Polls the socket tables while the page is on screen, and turns each *new* connection into a line
  * on the feed. Only samples when active — a network readout has no business waking the device from
@@ -54,6 +57,14 @@ class NetRadarViewModel @Inject constructor(
     private val _paused = MutableStateFlow(false)
     val paused: StateFlow<Boolean> = _paused.asStateFlow()
 
+    // The machine-room controls: Shizuku health and whether wireless debugging is on. Both are
+    // polled while the page is open; the wifi-debug read only works once Shizuku is up.
+    private val _shizuku = MutableStateFlow(ShizukuState.DOWN)
+    val shizuku: StateFlow<ShizukuState> = _shizuku.asStateFlow()
+
+    private val _wifiDebugOn = MutableStateFlow<Boolean?>(null)
+    val wifiDebugOn: StateFlow<Boolean?> = _wifiDebugOn.asStateFlow()
+
     private var job: Job? = null
     private var seen = emptySet<String>()
     private var firstDone = false
@@ -76,6 +87,7 @@ class NetRadarViewModel @Inject constructor(
         if (job?.isActive == true) return
         job = viewModelScope.launch {
             while (isActive) {
+                refreshShizuku()
                 if (!_paused.value) poll()
                 delay(POLL_MS)
             }
@@ -85,6 +97,41 @@ class NetRadarViewModel @Inject constructor(
     private fun stop() {
         job?.cancel()
         job = null
+    }
+
+    /** Read Shizuku's state, and — if it is up — whether wireless debugging is currently enabled. */
+    private suspend fun refreshShizuku() {
+        val state = withContext(Dispatchers.IO) {
+            when {
+                com.ykatchou.ylauncher.data.running.ShizukuShell.isReady() -> ShizukuState.UP
+                com.ykatchou.ylauncher.data.running.ShizukuShell.needsPermission() -> ShizukuState.NEEDS_PERMISSION
+                else -> ShizukuState.DOWN
+            }
+        }
+        _shizuku.value = state
+        _wifiDebugOn.value = if (state == ShizukuState.UP) {
+            withContext(Dispatchers.IO) {
+                com.ykatchou.ylauncher.data.running.ShizukuShell.run("settings get global adb_wifi_enabled")
+                    ?.trim()?.let { it == "1" }
+            }
+        } else {
+            null
+        }
+    }
+
+    fun requestShizukuPermission() {
+        com.ykatchou.ylauncher.data.running.ShizukuShell.requestPermission(SHIZUKU_REQ)
+    }
+
+    /** Flip wireless debugging via Shizuku — the recurring reconnection pain, killed with one tap. */
+    fun toggleWifiDebug() {
+        viewModelScope.launch {
+            val target = if (_wifiDebugOn.value == true) "0" else "1"
+            withContext(Dispatchers.IO) {
+                com.ykatchou.ylauncher.data.running.ShizukuShell.run("settings put global adb_wifi_enabled $target")
+            }
+            refreshShizuku()
+        }
     }
 
     private suspend fun poll() = runCatching { pollOnce() }
@@ -148,6 +195,7 @@ class NetRadarViewModel @Inject constructor(
 
     private companion object {
         const val POLL_MS = 1200L
+        const val SHIZUKU_REQ = 4610
         const val MAX_LINES = 80
     }
 }

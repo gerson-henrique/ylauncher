@@ -1,5 +1,6 @@
 package com.ykatchou.ylauncher.ui.radar
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -8,203 +9,235 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ykatchou.ylauncher.ui.theme.ProverbBrush
 import com.ykatchou.ylauncher.ui.theme.Y
 
-private val PageBackground = Color(0xFF0F0E14)
-private val FeedBackground = Color(0xFF0A0910)
-
+/**
+ * Sala de Máquinas (機關) — the network readout that also *acts*. It shows Shizuku's health and lets
+ * you open it, flips wireless debugging on/off through Shizuku (the reconnection pain, killed), and
+ * lists the live connections. All in Tinta: ink on warm paper, seal red the only accent.
+ */
 @Composable
 fun RadarScreen(viewModel: NetRadarViewModel = hiltViewModel()) {
     val feed by viewModel.feed.collectAsStateWithLifecycle()
     val summary by viewModel.summary.collectAsStateWithLifecycle()
     val available by viewModel.available.collectAsStateWithLifecycle()
-    val paused by viewModel.paused.collectAsStateWithLifecycle()
+    val shizuku by viewModel.shizuku.collectAsStateWithLifecycle()
+    val wifiDebugOn by viewModel.wifiDebugOn.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
-    // Sample only while this page is on screen — the whole point is not to run in the background.
     DisposableEffect(Unit) {
         viewModel.setActive(true)
         onDispose { viewModel.setActive(false) }
     }
 
+    val openShizuku = {
+        context.packageManager.getLaunchIntentForPackage("moe.shizuku.privileged.api")?.let {
+            context.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }
+        Unit
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(PageBackground)
+            .background(Brush.verticalGradient(listOf(Y.paperTop, Y.paperBottom)))
             .statusBarsPadding()
             .navigationBarsPadding(),
     ) {
         Column(modifier = Modifier.fillMaxSize().padding(Y.space.lg)) {
-            Header(available = available, paused = paused, onPause = viewModel::togglePause)
-            SummaryBar(summary)
+            Header()
+            Spacer(Modifier.height(Y.space.md))
+            Controls(
+                shizuku = shizuku,
+                wifiDebugOn = wifiDebugOn,
+                onShizukuTap = {
+                    when (shizuku) {
+                        ShizukuState.NEEDS_PERMISSION -> viewModel.requestShizukuPermission()
+                        else -> openShizuku()
+                    }
+                },
+                onWifiToggle = viewModel::toggleWifiDebug,
+            )
+            Spacer(Modifier.height(Y.space.md))
+            SectionLabel("conexões")
             Feed(feed = feed, available = available, modifier = Modifier.weight(1f))
         }
     }
 }
 
 @Composable
-private fun Header(available: Boolean, paused: Boolean, onPause: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(bottom = Y.space.md),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        androidx.compose.material3.Text(text = "Radar", style = Y.type.heading, color = Y.text)
-        val (dot, label) = when {
-            !available -> Y.warn to "Shizuku fora"
-            paused -> Y.textDim to "pausado"
-            else -> Y.warn to "ao vivo"
-        }
-        Row(
-            modifier = Modifier
-                .clip(RoundedCornerShape(Y.radius.pill))
-                .background(Color.White.copy(alpha = 0.05f))
-                .clickable { onPause() }
-                .padding(horizontal = Y.space.md, vertical = Y.space.sm),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(Y.space.sm),
+private fun Header() {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier.rotate(-3f).size(24.dp)
+                .border(1.5.dp, Y.seal, RoundedCornerShape(4.dp)),
+            contentAlignment = Alignment.Center,
         ) {
-            Box(modifier = Modifier.size(7.dp).clip(CircleShape).background(dot))
-            androidx.compose.material3.Text(text = label, style = Y.type.caption, color = Y.textDim)
+            Text("機", style = Y.type.subtitle.copy(fontFamily = ProverbBrush), color = Y.seal)
+        }
+        Spacer(Modifier.width(Y.space.sm))
+        Text("Máquinas", style = Y.type.title, color = Y.inkStrong, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun Controls(
+    shizuku: ShizukuState,
+    wifiDebugOn: Boolean?,
+    onShizukuTap: () -> Unit,
+    onWifiToggle: () -> Unit,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(Y.space.sm)) {
+        // Shizuku status chip — tap to open it (or grant permission).
+        val (dot, label, sub) = when (shizuku) {
+            ShizukuState.UP -> Triple(Y.jade, "Shizuku", "de pé")
+            ShizukuState.NEEDS_PERMISSION -> Triple(Y.accent, "Shizuku", "toca pra permitir")
+            ShizukuState.DOWN -> Triple(Y.seal, "Shizuku", "caiu · abrir")
+        }
+        ControlChip(modifier = Modifier.weight(1f), onClick = onShizukuTap) {
+            Box(Modifier.size(7.dp).clip(CircleShape).background(dot))
+            Spacer(Modifier.width(7.dp))
+            Column {
+                Text(label.uppercase(), style = Y.type.caption, color = Y.inkFaint, fontFamily = FontFamily.Monospace)
+                Text(sub, style = Y.type.bodySm, color = Y.ink)
+            }
+        }
+        // Wi-Fi debug toggle — only meaningful when Shizuku is up.
+        val enabled = shizuku == ShizukuState.UP
+        ControlChip(modifier = Modifier.weight(1f), onClick = { if (enabled) onWifiToggle() }) {
+            Column(Modifier.weight(1f)) {
+                Text("WI-FI DEBUG", style = Y.type.caption, color = Y.inkFaint, fontFamily = FontFamily.Monospace)
+                Text(
+                    when {
+                        !enabled -> "precisa do Shizuku"
+                        wifiDebugOn == true -> "ligado"
+                        wifiDebugOn == false -> "desligado"
+                        else -> "—"
+                    },
+                    style = Y.type.bodySm,
+                    color = if (enabled) Y.ink else Y.inkFaint,
+                )
+            }
+            Toggle(on = enabled && wifiDebugOn == true, dim = !enabled)
         }
     }
 }
 
 @Composable
-private fun SummaryBar(s: RadarSummary) {
+private fun ControlChip(modifier: Modifier = Modifier, onClick: () -> Unit, content: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(bottom = Y.space.md),
-        horizontalArrangement = Arrangement.spacedBy(Y.space.sm),
-    ) {
-        Chip(fmtRate(s.bytesPerSec), "tráfego", Modifier.weight(1f))
-        Chip(s.appsOnNet.toString(), "apps na rede", Modifier.weight(1f))
-        Chip(s.topOrg, "mais falado", Modifier.weight(1f))
-    }
-}
-
-@Composable
-private fun Chip(value: String, label: String, modifier: Modifier) {
-    Column(
         modifier = modifier
-            .clip(RoundedCornerShape(Y.radius.chip))
-            .background(Color.White.copy(alpha = 0.04f))
-            .border(0.8.dp, Y.glassEdge, RoundedCornerShape(Y.radius.chip))
-            .padding(vertical = Y.space.sm, horizontal = Y.space.sm),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        androidx.compose.material3.Text(
-            text = value, style = Y.type.title, color = Y.accent, maxLines = 1, overflow = TextOverflow.Ellipsis,
-        )
-        androidx.compose.material3.Text(text = label, style = Y.type.caption, color = Y.textFaint)
-    }
-}
-
-@Composable
-private fun Feed(feed: List<RadarLine>, available: Boolean, modifier: Modifier) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
             .clip(RoundedCornerShape(Y.radius.card))
-            .background(FeedBackground)
-            .border(0.8.dp, Y.glassEdge, RoundedCornerShape(Y.radius.card)),
+            .background(Y.paperTop.copy(alpha = 0.6f))
+            .border(1.dp, Y.inkFaint.copy(alpha = 0.4f), RoundedCornerShape(Y.radius.card))
+            .clickable { onClick() }
+            .padding(horizontal = Y.space.md, vertical = Y.space.sm),
+        verticalAlignment = Alignment.CenterVertically,
+        content = content,
+    )
+}
+
+@Composable
+private fun Toggle(on: Boolean, dim: Boolean) {
+    val track = when {
+        dim -> Y.inkFaint.copy(alpha = 0.35f)
+        on -> Y.jade
+        else -> Y.inkFaint.copy(alpha = 0.5f)
+    }
+    Box(
+        Modifier.width(30.dp).height(17.dp).clip(RoundedCornerShape(999.dp)).background(track),
+        contentAlignment = if (on) Alignment.CenterEnd else Alignment.CenterStart,
     ) {
-        when {
-            !available -> Centered("Shizuku fora — o radar lê a tabela de sockets por ele.\nAtive o Shizuku pra ligar o radar.")
-            feed.isEmpty() -> Centered("Ouvindo a rede…\nAs chamadas aparecem aqui quando os apps falarem.")
-            else -> LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(Y.space.sm),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
+        Box(Modifier.padding(2.dp).size(13.dp).clip(CircleShape).background(Y.paperTop))
+    }
+}
+
+@Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text = text.uppercase(),
+        style = Y.type.caption,
+        color = Y.inkFaint,
+        fontFamily = FontFamily.Monospace,
+        modifier = Modifier.padding(bottom = Y.space.xs),
+    )
+}
+
+@Composable
+private fun Feed(feed: List<RadarLine>, available: Boolean, modifier: Modifier = Modifier) {
+    if (!available) {
+        Box(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Text("Shizuku fora — sem leitura de rede", style = Y.type.bodySm, color = Y.inkFaint)
+        }
+        return
+    }
+    if (feed.isEmpty()) {
+        Box(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Text("quieto — nenhuma conexão nova", style = Y.type.bodySm, color = Y.inkFaint)
+        }
+        return
+    }
+    LazyColumn(modifier = modifier, contentPadding = PaddingValues(bottom = Y.space.xl)) {
+        items(feed, key = { it.id }) { line ->
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = Y.space.sm),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                items(feed, key = { it.id }) { line -> FeedRow(line) }
+                Box(
+                    Modifier.size(5.dp).clip(CircleShape)
+                        .background(if (line.fresh) Y.seal else Y.inkFaint),
+                )
+                Spacer(Modifier.width(Y.space.sm))
+                Text(
+                    line.app,
+                    style = Y.type.bodySm,
+                    color = if (line.fresh) Y.seal else Y.ink,
+                    fontWeight = if (line.fresh) FontWeight.Bold else FontWeight.Normal,
+                    fontFamily = FontFamily.Monospace,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(Y.space.sm))
+                Text(
+                    line.owner ?: "${line.remote}:${line.port}",
+                    style = Y.type.caption,
+                    color = Y.inkDim,
+                    fontFamily = FontFamily.Monospace,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
     }
-}
-
-@Composable
-private fun FeedRow(line: RadarLine) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(Y.radius.chip))
-            .background(if (line.fresh) Y.accent.copy(alpha = 0.10f) else Color.Transparent)
-            .padding(horizontal = Y.space.sm, vertical = 5.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Y.space.sm),
-    ) {
-        Box(modifier = Modifier.size(14.dp).clip(RoundedCornerShape(4.dp)).background(colorFor(line.uid)))
-        androidx.compose.material3.Text(
-            text = line.app,
-            style = Y.type.caption,
-            color = Y.text,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(0.9f),
-        )
-        androidx.compose.material3.Text(text = "→", style = Y.type.caption, color = Y.textFaint)
-        val known = line.owner != null
-        val dest = when {
-            known -> "${line.owner}:${line.port}"
-            line.remote.contains(':') -> "[${line.remote}]:${line.port}"
-            else -> "${line.remote}:${line.port}"
-        }
-        androidx.compose.material3.Text(
-            text = dest,
-            style = Y.type.caption,
-            color = if (known) Color(0xFF5AA1B8) else Y.textDim,   // known org pops; raw IP recedes
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1.4f),
-        )
-        androidx.compose.material3.Text(
-            text = line.proto,
-            style = Y.type.caption,
-            color = Y.textFaint,
-        )
-    }
-}
-
-@Composable
-private fun Centered(text: String) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        androidx.compose.material3.Text(
-            text = text, style = Y.type.bodySm, color = Y.textFaint, textAlign = TextAlign.Center,
-            modifier = Modifier.padding(Y.space.xl),
-        )
-    }
-}
-
-/** Bytes/sec as a compact human rate. */
-private fun fmtRate(bps: Long): String = when {
-    bps < 1024 -> "$bps B/s"
-    bps < 1024 * 1024 -> "${bps / 1024} KB/s"
-    else -> String.format("%.1f MB/s", bps / 1048576.0)
-}
-
-/** A stable colour per app so the eye can track a talker down the feed. */
-private fun colorFor(uid: Int): Color {
-    val hue = Math.floorMod(uid * 47, 360).toFloat()
-    return Color.hsv(hue, 0.5f, 0.7f)
 }
