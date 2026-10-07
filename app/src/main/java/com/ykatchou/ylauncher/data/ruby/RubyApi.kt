@@ -19,7 +19,7 @@ import javax.inject.Singleton
  * token as `Authorization: Bearer`; [parear] is the one call made before a token exists, so it
  * takes the base URL explicitly.
  *
- * "Fora da rede" is a normal state, not an error (the Dell only answers on the home WiFi), so a
+ * "Fora da rede" is a normal state, not an error (the Mac only answers on the home WiFi), so a
  * connection failure surfaces as [RubyResult.Unreachable], kept distinct from a real HTTP status.
  */
 @Singleton
@@ -47,11 +47,9 @@ class RubyApi @Inject constructor(
 
     suspend fun pedidos(): RubyResult<List<Pedido>> = getArray("/v1/pedidos") { Pedido.from(it) }
 
-    suspend fun despachos(): RubyResult<List<Despacho>> = getArray("/v1/despachos") { Despacho.from(it) }
-
-    /** Available flows to dispatch — a plain array of strings. */
-    suspend fun fluxos(): RubyResult<List<String>> = withContext(Dispatchers.IO) {
-        when (val r = authed("GET", "/v1/fluxos", null)) {
+    /** Folders Claude Code already trusts — the only places a background session can be opened. */
+    suspend fun repos(): RubyResult<List<String>> = withContext(Dispatchers.IO) {
+        when (val r = authed("GET", "/v1/repos", null)) {
             is Raw.Ok -> try {
                 val arr = JSONArray(r.body)
                 RubyResult.Ok((0 until arr.length()).map { arr.getString(it) })
@@ -63,12 +61,47 @@ class RubyApi @Inject constructor(
         }
     }
 
-    /** Fire a flow; it runs in the background on the Dell. Returns the execution id. */
-    suspend fun disparar(fluxo: String): RubyResult<String> = withContext(Dispatchers.IO) {
-        val body = JSONObject().put("fluxo", fluxo).put("params", JSONObject()).toString()
-        when (val r = authed("POST", "/v1/despachos", body)) {
+    /** Open a background Claude Code session in [repo] with [prompt]. Returns its display name. */
+    suspend fun despachar(repo: String, prompt: String): RubyResult<String> = withContext(Dispatchers.IO) {
+        val body = JSONObject().put("repo", repo).put("prompt", prompt).toString()
+        when (val r = authed("POST", "/v1/despachos", body, LONG_TIMEOUT_MS)) {
             is Raw.Ok -> try {
-                RubyResult.Ok(JSONObject(r.body).getString("execucao"))
+                RubyResult.Ok(JSONObject(r.body).getString("nome"))
+            } catch (e: Exception) {
+                RubyResult.HttpError(-1)
+            }
+            is Raw.Http -> RubyResult.HttpError(r.code)
+            Raw.Unreachable -> RubyResult.Unreachable
+        }
+    }
+
+    /** Stop a background session (terminal ones are closed at the terminal). */
+    suspend fun parar(sessaoId: String): RubyResult<Unit> = withContext(Dispatchers.IO) {
+        when (val r = authed("POST", "/v1/sessoes/$sessaoId/parar", "")) {
+            is Raw.Ok -> RubyResult.Ok(Unit)
+            is Raw.Http -> RubyResult.HttpError(r.code)
+            Raw.Unreachable -> RubyResult.Unreachable
+        }
+    }
+
+    /**
+     * What Cricket answers to something you said or typed: first the fixed command list (no AI,
+     * instant); if it is not a command, the warm brain on the Mac (may dispatch or stop sessions).
+     * Returns the sentence to show/speak; empty = understood nothing.
+     */
+    suspend fun falar(texto: String): RubyResult<String> = withContext(Dispatchers.IO) {
+        val body = JSONObject().put("texto", texto).toString()
+        when (val c = authed("POST", "/v1/comandos", body)) {
+            is Raw.Ok -> {
+                val j = try { JSONObject(c.body) } catch (e: Exception) { JSONObject() }
+                if (j.optBoolean("entendeu")) return@withContext RubyResult.Ok(j.optString("texto"))
+            }
+            is Raw.Http -> if (c.code == 401) return@withContext RubyResult.HttpError(401)
+            Raw.Unreachable -> return@withContext RubyResult.Unreachable
+        }
+        when (val r = authed("POST", "/v1/fala", body, LONG_TIMEOUT_MS)) {
+            is Raw.Ok -> try {
+                RubyResult.Ok(JSONObject(r.body).optString("fala"))
             } catch (e: Exception) {
                 RubyResult.HttpError(-1)
             }
@@ -78,7 +111,7 @@ class RubyApi @Inject constructor(
     }
 
     /**
-     * Send a decision, resuming the paused flow. `409` means another screen already decided —
+     * Send a decision: the waiting Claude Code session continues. `409` means another screen already decided —
      * the contract says treat it as silent success and reload, so it maps to [RubyResult.Ok].
      */
     suspend fun decidir(pedidoId: String, ok: Boolean): RubyResult<Unit> = withContext(Dispatchers.IO) {
@@ -148,17 +181,19 @@ class RubyApi @Inject constructor(
         }
 
     /** Like [raw], but pulls the current base URL + token; no token yet ⇒ synthesise a 401. */
-    private suspend fun authed(method: String, path: String, body: String?): Raw {
+    private suspend fun authed(method: String, path: String, body: String?, timeoutMs: Int = TIMEOUT_MS): Raw {
         val token = config.tokenNow() ?: return Raw.Http(401)
-        return raw(config.baseUrlNow(), method, path, body, token)
+        return raw(config.baseUrlNow(), method, path, body, token, timeoutMs)
     }
 
-    private fun raw(baseUrl: String, method: String, path: String, body: String?, token: String?): Raw {
+    private fun raw(
+        baseUrl: String, method: String, path: String, body: String?, token: String?, timeoutMs: Int = TIMEOUT_MS,
+    ): Raw {
         return try {
             val conn = (URL(baseUrl + path).openConnection() as HttpURLConnection).apply {
                 requestMethod = method
                 connectTimeout = TIMEOUT_MS
-                readTimeout = TIMEOUT_MS
+                readTimeout = timeoutMs
                 token?.let { setRequestProperty("Authorization", "Bearer $it") }
                 if (body != null) {
                     doOutput = true
@@ -192,5 +227,7 @@ class RubyApi @Inject constructor(
     private companion object {
         const val TAG = "RubyApi"
         const val TIMEOUT_MS = 6000
+        /** The brain and `claude --bg` can take seconds; don't give up on them like on a GET. */
+        const val LONG_TIMEOUT_MS = 70_000
     }
 }

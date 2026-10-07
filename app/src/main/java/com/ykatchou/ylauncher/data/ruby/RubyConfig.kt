@@ -108,7 +108,7 @@ class RubyConfig @Inject constructor(
 
     companion object {
         /** The Dell on the home WiFi, from the contract. Editable in settings; not compiled fixed. */
-        const val DEFAULT_BASE_URL = "http://192.168.0.30:8080"
+        const val DEFAULT_BASE_URL = "http://192.168.0.9:8080"
 
         private const val TAG = "RubyConfig"
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"

@@ -30,8 +30,18 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.media.MediaPlayer
+import android.speech.RecognizerIntent
+import android.speech.tts.TextToSpeech
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
+import java.util.Locale
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,7 +57,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.ykatchou.ylauncher.data.ruby.Despacho
 import com.ykatchou.ylauncher.data.ruby.Pedido
 import com.ykatchou.ylauncher.data.ruby.Sessao
 import com.ykatchou.ylauncher.data.ruby.SessaoEstado
@@ -67,6 +76,24 @@ fun CricketScreen(viewModel: OrchestratorViewModel = hiltViewModel()) {
     DisposableEffect(Unit) {
         viewModel.setActive(true)
         onDispose { viewModel.setActive(false) }
+    }
+
+    // Cricket answers out loud on the phone too: the chirp, then the sentence (pt-BR TTS).
+    val context = LocalContext.current
+    val tts = remember { mutableStateOf<TextToSpeech?>(null) }
+    DisposableEffect(Unit) {
+        var engine: TextToSpeech? = null
+        engine = TextToSpeech(context) { status ->
+            if (status == TextToSpeech.SUCCESS) { engine?.language = Locale("pt", "BR"); tts.value = engine }
+        }
+        onDispose { engine?.shutdown() }
+    }
+    LaunchedEffect(state.fala) {
+        val fala = state.fala ?: return@LaunchedEffect
+        runCatching { MediaPlayer.create(context, com.ykatchou.ylauncher.R.raw.grilo)?.apply { setOnCompletionListener { it.release() }; start() } }
+        kotlinx.coroutines.delay(850)
+        tts.value?.speak(fala.removePrefix("Creak Creak... "), TextToSpeech.QUEUE_FLUSH, null, "cricket")
+        viewModel.consumeFala()
     }
 
     Box(
@@ -107,12 +134,16 @@ private fun Mural(state: OrchestratorState, vm: OrchestratorViewModel) {
                 item(key = "fleet") { FleetCard(running, stuck) }
             }
 
-            // What is running/paused.
-            val active = state.despachos.filter { it.estado.ativo || it.estado.atencao }.take(4)
-            items(active, key = { "d_${it.id}" }) { d -> DespachoCard(d) }
+            // Background sessions — the ones Cricket can stop.
+            val fundo = state.sessoes.filter { it.kind == "background" && it.estado != SessaoEstado.TERMINADA }.take(6)
+            items(fundo, key = { "s_${it.id}" }) { s -> SessaoFundoCard(s, vm::parar) }
+
+            // Send work to a trusted folder.
+            if (state.repos.isNotEmpty()) item(key = "work") { TrabalhoCard(state.repos, vm::despachar) }
 
             // Cricket's remarks + your commands.
             items(state.recados, key = { "r_${it.id}" }) { r -> RecadoCard(r) }
+            if (state.pensando) item(key = "thinking") { RecadoCard(Recado(-1, "• • •", mine = false)) }
 
             if (state.pedidos.isEmpty() && state.sessoes.isEmpty() && state.recados.isEmpty()) {
                 item(key = "empty") { Empty(if (state.phase == Phase.UNREACHABLE) "fora da rede — normal, tentando…" else "tudo tranquilo") }
@@ -188,15 +219,51 @@ private fun FleetCard(running: Int, stuck: Int) {
 }
 
 @Composable
-private fun DespachoCard(d: Despacho) {
+private fun SessaoFundoCard(s: Sessao, onParar: (String) -> Unit) {
     PaperCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(d.fluxo, style = Y.type.body, color = Y.ink, fontFamily = FontFamily.Monospace, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                (d.motivo ?: d.no)?.let { Text(it, style = Y.type.caption, color = Y.inkFaint, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                Text(s.nome, style = Y.type.body, color = Y.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("${s.cwd.substringAfterLast('/')} · ${s.estado.name.lowercase()}", style = Y.type.caption,
+                    color = if (s.estado.atencao) Y.seal else Y.inkFaint, fontFamily = FontFamily.Monospace)
             }
-            Text(d.estado.name.lowercase(), style = Y.type.caption,
-                color = if (d.estado.atencao) Y.seal else Y.jade, fontFamily = FontFamily.Monospace)
+            Text("parar", style = Y.type.label, color = Y.seal, fontWeight = FontWeight.Bold,
+                modifier = Modifier.clickable { onParar(s.id) })
+        }
+    }
+}
+
+/** Pick a trusted folder, write the task, dispatch a background session. */
+@Composable
+private fun TrabalhoCard(repos: List<String>, onDespachar: (String, String) -> Unit) {
+    var repo by remember(repos) { mutableStateOf(repos.firstOrNull { it.endsWith("faeerie-haven") } ?: repos.first()) }
+    var tarefa by remember { mutableStateOf("") }
+    var aberto by remember { mutableStateOf(false) }
+    PaperCard {
+        Text("MANDAR TRABALHO", style = Y.type.caption, color = Y.inkFaint, fontFamily = FontFamily.Monospace,
+            modifier = Modifier.clickable { aberto = !aberto })
+        if (aberto) {
+            Spacer(Modifier.height(Y.space.xs))
+            // Tap the folder name to cycle through the trusted ones (no dropdown chrome on paper).
+            Text(repo.substringAfterLast('/') + "  ↻", style = Y.type.body, color = Y.seal, fontWeight = FontWeight.Bold,
+                modifier = Modifier.clickable { repo = repos[(repos.indexOf(repo) + 1) % repos.size] })
+            Spacer(Modifier.height(Y.space.xs))
+            TextField(
+                value = tarefa, onValueChange = { tarefa = it },
+                placeholder = { Text("o que a sessão deve fazer", color = Y.inkFaint) },
+                textStyle = LocalTextStyle.current.copy(color = Y.ink), maxLines = 4,
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Y.paperTop.copy(alpha = 0.7f), unfocusedContainerColor = Y.paperTop.copy(alpha = 0.5f),
+                    focusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+                    unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent, cursorColor = Y.seal,
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(Y.space.xs))
+            Text("Despachar", style = Y.type.label, color = Y.seal, fontWeight = FontWeight.Bold,
+                modifier = Modifier.align(Alignment.End).clickable {
+                    if (tarefa.isNotBlank()) { onDespachar(repo, tarefa); tarefa = ""; aberto = false }
+                })
         }
     }
 }
@@ -231,6 +298,15 @@ private fun PaperCard(content: @Composable androidx.compose.foundation.layout.Co
 private fun CommandBar(onSend: (String) -> Unit) {
     var text by remember { mutableStateOf("") }
     val fire = { if (text.isNotBlank()) { onSend(text); text = "" } }
+    // Voice: the phone's own recognizer (pt-BR); the text goes the same way as typing.
+    val ouvir = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+        r.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+            ?.takeIf { it.isNotBlank() }?.let(onSend)
+    }
+    val falarIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+        .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+        .putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pt-BR")
+        .putExtra(RecognizerIntent.EXTRA_PROMPT, "Fale com o Cricket")
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = Y.space.sm),
         verticalAlignment = Alignment.CenterVertically,
@@ -252,6 +328,13 @@ private fun CommandBar(onSend: (String) -> Unit) {
             shape = RoundedCornerShape(Y.radius.pill),
             modifier = Modifier.weight(1f),
         )
+        Spacer(Modifier.width(Y.space.sm))
+        // Speak = the cricket stamp (蛩): tap and talk.
+        Box(
+            Modifier.rotate(3f).size(38.dp).clip(RoundedCornerShape(7.dp)).border(1.5.dp, Y.seal, RoundedCornerShape(7.dp))
+                .clickable { try { ouvir.launch(falarIntent) } catch (e: ActivityNotFoundException) { onSend("") } },
+            contentAlignment = Alignment.Center,
+        ) { Text("蛩", style = Y.type.subtitle.copy(fontFamily = ProverbBrush), color = Y.seal) }
         Spacer(Modifier.width(Y.space.sm))
         // Send = a seal stamp (送), rotated like the other stamps.
         Box(
@@ -285,9 +368,9 @@ private fun Pairing(initialBaseUrl: String, error: String?, onPair: (String, Str
             Text("Parear o Cricket", style = Y.type.title, color = Y.inkStrong, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.height(Y.space.sm))
-        Text("O código de 6 hex aparece no log do servidor. É de uso único.", style = Y.type.bodySm, color = Y.inkDim)
+        Text("O código de 6 hex aparece no log do Cricket (~/.cricket/cricket.log). É de uso único.", style = Y.type.bodySm, color = Y.inkDim)
         Spacer(Modifier.height(Y.space.lg))
-        PairField("Endereço do Dell", baseUrl) { baseUrl = it }
+        PairField("Endereço do Mac", baseUrl) { baseUrl = it }
         Spacer(Modifier.height(Y.space.md))
         PairField("Código de pareamento", codigo) { codigo = it.uppercase() }
         Spacer(Modifier.height(Y.space.md))
