@@ -105,8 +105,13 @@ class Ponte @Inject constructor(
         val challenge = call("GET", "/tela/desafio")
             ?.let { runCatching { JSONObject(it).getString("desafio") }.getOrNull() }
             ?: return Screen.Refused("Mac fora de alcance")
-        val signature = withContext(Dispatchers.Main) { TelaGate.sign(context, challenge) }
-            ?: return Screen.Refused("digital não confirmada")
+        // A biometric failure is a refusal, never a crash: this runs inside the launcher, and a
+        // crashing home app makes Android fall back to the stock launcher.
+        val signature = withContext(Dispatchers.Main) {
+            runCatching { TelaGate.sign(context, challenge) }
+                .onFailure { YLogger.e(TAG, "biometric sign failed", it as? Exception ?: Exception(it)) }
+                .getOrNull()
+        } ?: return Screen.Refused("digital não confirmada")
         val body = JSONObject().put("desafio", challenge).put("assinatura", signature).toString()
         call("POST", "/tela/abrir", body.toByteArray())
             ?: return Screen.Refused("o Mac não abriu a tela — o hashi-tela está instalado?")
