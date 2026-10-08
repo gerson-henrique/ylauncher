@@ -41,6 +41,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import java.util.Locale
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -145,8 +147,17 @@ private fun Mural(state: OrchestratorState, vm: OrchestratorViewModel) {
             items(state.recados, key = { "r_${it.id}" }) { r -> RecadoCard(r) }
             if (state.pensando) item(key = "thinking") { RecadoCard(Recado(-1, "• • •", mine = false)) }
 
-            if (state.pedidos.isEmpty() && state.sessoes.isEmpty() && state.recados.isEmpty()) {
-                item(key = "empty") { Empty(if (state.phase == Phase.UNREACHABLE) "fora da rede — normal, tentando…" else "tudo tranquilo") }
+            if (state.phase == Phase.UNREACHABLE) {
+                item(key = "offline") {
+                    Column(Modifier.fillMaxWidth().padding(top = Y.space.xl), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("sem alcance ao Mac em ${state.baseUrl}", style = Y.type.body, color = Y.inkFaint)
+                        Spacer(Modifier.height(Y.space.sm))
+                        Text("trocar endereço", style = Y.type.label, color = Y.seal, fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clickable { vm.trocarEndereco() })
+                    }
+                }
+            } else if (state.pedidos.isEmpty() && state.sessoes.isEmpty() && state.recados.isEmpty()) {
+                item(key = "empty") { Empty("tudo tranquilo") }
             }
         }
 
@@ -329,18 +340,49 @@ private fun CommandBar(onSend: (String) -> Unit) {
             modifier = Modifier.weight(1f),
         )
         Spacer(Modifier.width(Y.space.sm))
-        // Speak = the cricket stamp (蛩): tap and talk.
+        // Icons, not seal glyphs: a microphone to talk, a paper plane to send.
         Box(
-            Modifier.rotate(3f).size(38.dp).clip(RoundedCornerShape(7.dp)).border(1.5.dp, Y.seal, RoundedCornerShape(7.dp))
-                .clickable { try { ouvir.launch(falarIntent) } catch (e: ActivityNotFoundException) { onSend("") } },
+            Modifier.size(40.dp).clip(CircleShape).border(1.5.dp, Y.seal, CircleShape)
+                .clickable { try { ouvir.launch(falarIntent) } catch (e: ActivityNotFoundException) { onSend("") } }
+                .semantics { contentDescription = "Falar" },
             contentAlignment = Alignment.Center,
-        ) { Text("蛩", style = Y.type.subtitle.copy(fontFamily = ProverbBrush), color = Y.seal) }
-        Spacer(Modifier.width(Y.space.sm))
-        // Send = a seal stamp (送), rotated like the other stamps.
+        ) { IconeMicrofone(Y.seal) }
+        Spacer(Modifier.width(Y.space.xs))
         Box(
-            Modifier.rotate(-3f).size(38.dp).clip(RoundedCornerShape(7.dp)).background(Y.seal).clickable { fire() },
+            Modifier.size(40.dp).clip(CircleShape).background(Y.seal).clickable { fire() }
+                .semantics { contentDescription = "Enviar" },
             contentAlignment = Alignment.Center,
-        ) { Text("送", style = Y.type.subtitle.copy(fontFamily = ProverbBrush), color = Y.paperTop) }
+        ) { IconeEnviar(Y.paperTop) }
+    }
+}
+
+/** Microphone drawn in ink strokes: capsule, cradle arc, stem and base. */
+@Composable
+private fun IconeMicrofone(cor: androidx.compose.ui.graphics.Color) {
+    androidx.compose.foundation.Canvas(Modifier.size(20.dp)) {
+        val w = size.width; val h = size.height; val traco = w * 0.1f
+        drawRoundRect(cor, topLeft = androidx.compose.ui.geometry.Offset(w * 0.35f, 0f),
+            size = androidx.compose.ui.geometry.Size(w * 0.3f, h * 0.6f),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(w * 0.15f))
+        drawArc(cor, startAngle = 0f, sweepAngle = 180f, useCenter = false,
+            topLeft = androidx.compose.ui.geometry.Offset(w * 0.2f, h * 0.25f),
+            size = androidx.compose.ui.geometry.Size(w * 0.6f, h * 0.55f),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(traco, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+        drawLine(cor, androidx.compose.ui.geometry.Offset(w * 0.5f, h * 0.8f), androidx.compose.ui.geometry.Offset(w * 0.5f, h * 0.95f), traco)
+        drawLine(cor, androidx.compose.ui.geometry.Offset(w * 0.32f, h * 0.95f), androidx.compose.ui.geometry.Offset(w * 0.68f, h * 0.95f), traco,
+            cap = androidx.compose.ui.graphics.StrokeCap.Round)
+    }
+}
+
+/** Paper plane: one filled triangle with the fold cut out. */
+@Composable
+private fun IconeEnviar(cor: androidx.compose.ui.graphics.Color) {
+    androidx.compose.foundation.Canvas(Modifier.size(18.dp)) {
+        val w = size.width; val h = size.height
+        val aviao = androidx.compose.ui.graphics.Path().apply {
+            moveTo(0f, h * 0.08f); lineTo(w, h * 0.5f); lineTo(0f, h * 0.92f); lineTo(w * 0.18f, h * 0.5f); close()
+        }
+        drawPath(aviao, cor)
     }
 }
 

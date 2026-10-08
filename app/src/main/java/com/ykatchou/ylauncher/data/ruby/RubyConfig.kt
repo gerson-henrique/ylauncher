@@ -36,9 +36,21 @@ class RubyConfig @Inject constructor(
 ) {
     private val dataStore = context.rubyConfigStore
 
-    /** The Dell's address, always trimmed of a trailing slash, falling back to the known default. */
+    /** Cricket's address, always trimmed of a trailing slash, falling back to the known default. */
     val baseUrl: Flow<String> = dataStore.data.map {
         it[BASE_URL]?.takeIf { u -> u.isNotBlank() } ?: DEFAULT_BASE_URL
+    }
+
+    /**
+     * The Ruby lived on the Dell (192.168.0.30), which is now a Windows box; Cricket lives on the
+     * Mac. A phone paired back then kept that address and its token, so it retried a dead host
+     * forever and never showed pairing. Drop both once: the next start lands on the pairing screen
+     * already pointing at the Mac.
+     */
+    suspend fun migrarDoDell() {
+        if (dataStore.data.first()[BASE_URL]?.trimEnd('/') in LEGACY_BASE_URLS) {
+            dataStore.edit { it.remove(BASE_URL); it.remove(TOKEN_BLOB) }
+        }
     }
 
     /** Whether we are paired — drives the pairing screen without ever decrypting the token. */
@@ -109,6 +121,7 @@ class RubyConfig @Inject constructor(
     companion object {
         /** The Dell on the home WiFi, from the contract. Editable in settings; not compiled fixed. */
         const val DEFAULT_BASE_URL = "http://192.168.0.9:8080"
+        private val LEGACY_BASE_URLS = setOf("http://192.168.0.30:8080", "http://192.168.68.106:8080", "http://ruby.local:8080")
 
         private const val TAG = "RubyConfig"
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"

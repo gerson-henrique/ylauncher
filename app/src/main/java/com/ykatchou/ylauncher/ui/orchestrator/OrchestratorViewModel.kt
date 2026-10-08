@@ -80,6 +80,7 @@ class OrchestratorViewModel @Inject constructor(
     private fun start() {
         if (loop != null) return
         loop = viewModelScope.launch {
+            config.migrarDoDell()
             _state.update { it.copy(baseUrl = config.baseUrlNow()) }
             if (!config.hasToken.first()) {
                 _state.update { it.copy(phase = Phase.PAIRING) }
@@ -265,6 +266,12 @@ class OrchestratorViewModel @Inject constructor(
     private fun addRecado(texto: String, mine: Boolean, falar: Boolean = false) {
         val r = Recado(recadoId++, texto, mine)
         _state.update { it.copy(recados = (it.recados + r).takeLast(8), fala = if (falar) texto else it.fala) }
+    }
+
+    /** Out of reach and stuck on a wrong address: go back to pairing to type the right one. */
+    fun trocarEndereco() {
+        stop()
+        _state.update { it.copy(phase = Phase.PAIRING, pairingError = null) }
     }
 
     fun consumeFala() = _state.update { it.copy(fala = null) }
