@@ -2,8 +2,6 @@ package com.ykatchou.ylauncher.ui.orchestrator
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ykatchou.ylauncher.data.ruby.Despacho
-import com.ykatchou.ylauncher.data.ruby.DespachoEstado
 import com.ykatchou.ylauncher.data.ruby.Evento
 import com.ykatchou.ylauncher.data.ruby.Maquina
 import com.ykatchou.ylauncher.data.ruby.Pedido
@@ -41,8 +39,10 @@ data class OrchestratorState(
     val maquinas: List<Maquina> = emptyList(),
     val sessoes: List<Sessao> = emptyList(),
     val pedidos: List<Pedido> = emptyList(),
-    val despachos: List<Despacho> = emptyList(),
-    val fluxos: List<String> = emptyList(),
+    /** Trusted folders where a background session can be dispatched. */
+    val repos: List<String> = emptyList(),
+    /** A command/question is being answered by the Mac (shows the "• • •"). */
+    val pensando: Boolean = false,
     /** Last thing the Ruby said — shown once as a toast, then consumed. */
     val fala: String? = null,
     /** Rolling recados for the mural (your commands + Cricket's remarks), newest last, capped. */
@@ -55,16 +55,15 @@ data class OrchestratorState(
  * Owns the whole orchestrator world as one [StateFlow]. On becoming active it pairs-or-loads: no
  * token ⇒ [Phase.PAIRING]; otherwise it pulls the REST snapshot and then *lives off the SSE*,
  * merging each event into state. The connect loop re-syncs the snapshot on every reconnect and backs
- * off when the Dell is unreachable — which is a normal state here, not a failure.
+ * off when the Mac is unreachable — which is a normal state here, not a failure.
  *
- * All regra de negócio is on the Dell; this only reads, shows, and sends decisions.
+ * All regra de negócio is on the Mac; this only reads, shows, and sends decisions.
  */
 @HiltViewModel
 class OrchestratorViewModel @Inject constructor(
     private val api: RubyApi,
     private val events: RubyEventStream,
     private val config: RubyConfig,
-    private val socket: com.ykatchou.ylauncher.data.ruby.RubyChatSocket,
 ) : ViewModel() {
 
     private var recadoId = 0L
@@ -140,8 +139,7 @@ class OrchestratorViewModel @Inject constructor(
         if (frota is RubyResult.HttpError && frota.code == 401) return Load.UNAUTHORIZED
 
         val pedidos = api.pedidos()
-        val despachos = api.despachos()
-        val fluxos = api.fluxos()
+        val repos = api.repos()
 
         _state.update { s ->
             s.copy(
@@ -151,9 +149,7 @@ class OrchestratorViewModel @Inject constructor(
                     (frota).value.agora,
                 ) ?: s.sessoes,
                 pedidos = (pedidos as? RubyResult.Ok)?.value ?: s.pedidos,
-                despachos = (despachos as? RubyResult.Ok)?.value?.sortedByDescending { it.mudouEm }
-                    ?: s.despachos,
-                fluxos = (fluxos as? RubyResult.Ok)?.value ?: s.fluxos,
+                repos = (repos as? RubyResult.Ok)?.value ?: s.repos,
             )
         }
         return Load.OK
@@ -176,29 +172,7 @@ class OrchestratorViewModel @Inject constructor(
 
     private fun apply(evento: Evento) {
         when (evento) {
-            is Evento.ExecucaoMudou -> _state.update { s ->
-                val now = s.agora
-                val existing = s.despachos.firstOrNull { it.id == evento.id }
-                val updated = existing?.copy(
-                    fluxo = evento.fluxo.ifEmpty { existing.fluxo },
-                    estado = evento.estado,
-                    no = evento.no,
-                    pedido = evento.pedido,
-                    motivo = evento.motivo,
-                    mudouEm = now,
-                ) ?: Despacho(
-                    id = evento.id,
-                    fluxo = evento.fluxo,
-                    estado = evento.estado,
-                    no = evento.no,
-                    pedido = evento.pedido,
-                    motivo = evento.motivo,
-                    criadaEm = now,
-                    mudouEm = now,
-                )
-                // Most-recently-changed floats to the top.
-                s.copy(despachos = listOf(updated) + s.despachos.filterNot { it.id == evento.id })
-            }
+            is Evento.ExecucaoMudou -> Unit // the old flow engine is gone; nothing emits this now
 
             is Evento.PedidoAberto -> _state.update { s ->
                 s.copy(pedidos = listOf(evento.pedido) + s.pedidos.filterNot { it.id == evento.pedido.id })
@@ -214,8 +188,7 @@ class OrchestratorViewModel @Inject constructor(
             }
 
             is Evento.Fala -> {
-                val r = Recado(recadoId++, evento.texto, mine = false)
-                _state.update { it.copy(fala = evento.texto, recados = (it.recados + r).takeLast(6)) }
+                        addRecado(evento.texto, mine = false, falar = true)
             }
 
             Evento.Pulso, Evento.Desconhecido -> Unit // keep-alive / forward-compat: nothing to do
@@ -238,7 +211,7 @@ class OrchestratorViewModel @Inject constructor(
                     it.copy(pairingError = if (r.code == 401) "Código errado ou já usado." else "Erro ${r.code}.")
                 }
                 RubyResult.Unreachable -> _state.update {
-                    it.copy(pairingError = "Sem alcance ao Dell — confira o endereço e a WiFi.")
+                    it.copy(pairingError = "Sem alcance ao Mac — confira o endereço e a WiFi.")
                 }
             }
         }
@@ -250,29 +223,48 @@ class OrchestratorViewModel @Inject constructor(
         viewModelScope.launch { api.decidir(pedidoId, ok) }
     }
 
-    fun disparar(fluxo: String) {
-        viewModelScope.launch { api.disparar(fluxo) }
+    /** Open a background Claude Code session in [repo]; Cricket's permission flow takes it from there. */
+    fun despachar(repo: String, prompt: String) {
+        val t = prompt.trim()
+        if (t.isEmpty()) return
+        viewModelScope.launch {
+            val r = api.despachar(repo, t)
+            val texto = when (r) {
+                is RubyResult.Ok -> "despachei ${r.value} em ${repo.substringAfterLast('/')}"
+                is RubyResult.HttpError -> "o despacho falhou (${r.code})"
+                RubyResult.Unreachable -> "sem alcance ao Mac"
+            }
+            addRecado(texto, mine = false)
+        }
+    }
+
+    fun parar(sessaoId: String) {
+        viewModelScope.launch { api.parar(sessaoId) }
     }
 
     /**
-     * Send a free-text command to Cricket over the /ws. Echoes it as a recado immediately; her reply
-     * arrives on the SSE `fala` stream (already listened) and lands as another recado. A short-lived
-     * socket: open, send on connect, drop — the reply does not need it held open.
+     * Say or type something to Cricket: fixed commands answer instantly; anything else goes to the
+     * warm brain on the Mac, which may dispatch or stop sessions. Echoes yours, then her answer.
      */
     fun mandar(texto: String) {
         val t = texto.trim()
         if (t.isEmpty()) return
-        val mine = Recado(recadoId++, t, mine = true)
-        _state.update { it.copy(recados = (it.recados + mine).takeLast(6)) }
+        addRecado(t, mine = true)
+        _state.update { it.copy(pensando = true) }
         viewModelScope.launch {
-            val j = launch {
-                socket.open().collect { msg ->
-                    if (msg is com.ykatchou.ylauncher.data.ruby.ChatEvent.Connected) socket.falar(t, null)
-                }
+            val r = api.falar(t)
+            _state.update { it.copy(pensando = false) }
+            when (r) {
+                is RubyResult.Ok -> addRecado(r.value.ifBlank { "cri cri…" }, mine = false, falar = r.value.isNotBlank())
+                is RubyResult.HttpError -> addRecado(if (r.code == 401) "precisa parear de novo" else "erro ${r.code}", mine = false)
+                RubyResult.Unreachable -> addRecado("sem alcance ao Mac", mine = false)
             }
-            delay(3000)
-            j.cancel()
         }
+    }
+
+    private fun addRecado(texto: String, mine: Boolean, falar: Boolean = false) {
+        val r = Recado(recadoId++, texto, mine)
+        _state.update { it.copy(recados = (it.recados + r).takeLast(8), fala = if (falar) texto else it.fala) }
     }
 
     fun consumeFala() = _state.update { it.copy(fala = null) }
