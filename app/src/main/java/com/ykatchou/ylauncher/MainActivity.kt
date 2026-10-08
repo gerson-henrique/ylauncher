@@ -43,6 +43,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var widgetHost: LauncherWidgetHost
     @Inject lateinit var panelDao: PanelDao
     @Inject lateinit var configBackupRepository: ConfigBackupRepository
+    @Inject lateinit var ponte: com.ykatchou.ylauncher.data.ponte.Ponte
 
     private var pendingWidgetId: Int = AppWidgetManager.INVALID_APPWIDGET_ID
 
@@ -140,6 +141,8 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         widgetHost.startListening()
+        // Coming home is when a Mac copy missed while the phone was unreachable gets caught up.
+        ponte.scope.launch { ponte.pullMacClip() }
     }
 
     override fun onStop() {

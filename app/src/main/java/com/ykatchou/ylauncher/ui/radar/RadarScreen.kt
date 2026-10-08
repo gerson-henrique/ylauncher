@@ -1,13 +1,15 @@
 package com.ykatchou.ylauncher.ui.radar
 
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,14 +20,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,26 +38,30 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ykatchou.ylauncher.data.ponte.Ponte
 import com.ykatchou.ylauncher.ui.theme.ProverbBrush
 import com.ykatchou.ylauncher.ui.theme.Y
 
 /**
- * Sala de Máquinas (機關) — the network readout that also *acts*. It shows Shizuku's health and lets
- * you open it, flips wireless debugging on/off through Shizuku (the reconnection pain, killed), and
- * lists the live connections. All in Tinta: ink on warm paper, seal red the only accent.
+ * Sala de Máquinas (機關) — bench tools the system hides. It shows Shizuku's health and lets you
+ * open it, flips wireless debugging on/off through Shizuku (the reconnection pain, killed), and
+ * opens the QR reader. All in Tinta: ink on warm paper, seal red the only accent.
  */
 @Composable
 fun RadarScreen(viewModel: NetRadarViewModel = hiltViewModel()) {
-    val feed by viewModel.feed.collectAsStateWithLifecycle()
-    val summary by viewModel.summary.collectAsStateWithLifecycle()
-    val available by viewModel.available.collectAsStateWithLifecycle()
     val shizuku by viewModel.shizuku.collectAsStateWithLifecycle()
     val wifiDebugOn by viewModel.wifiDebugOn.collectAsStateWithLifecycle()
+    val adbPort by viewModel.adbPort.collectAsStateWithLifecycle()
+    val ponteName by viewModel.ponteName.collectAsStateWithLifecycle()
+    val macUp by viewModel.macUp.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        viewModel.messages.collect { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+    }
 
     DisposableEffect(Unit) {
         viewModel.setActive(true)
@@ -80,6 +88,7 @@ fun RadarScreen(viewModel: NetRadarViewModel = hiltViewModel()) {
             Controls(
                 shizuku = shizuku,
                 wifiDebugOn = wifiDebugOn,
+                adbPort = adbPort,
                 onShizukuTap = {
                     when (shizuku) {
                         ShizukuState.NEEDS_PERMISSION -> viewModel.requestShizukuPermission()
@@ -89,8 +98,41 @@ fun RadarScreen(viewModel: NetRadarViewModel = hiltViewModel()) {
                 onWifiToggle = viewModel::toggleWifiDebug,
             )
             Spacer(Modifier.height(Y.space.md))
-            SectionLabel("conexões")
-            Feed(feed = feed, available = available, modifier = Modifier.weight(1f))
+            ToolTile(
+                glyph = "読",
+                label = "ler QR",
+                sub = "link, wi‑fi, pix, texto",
+                onClick = {
+                    context.startActivity(
+                        Intent(context, QrScannerActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                    )
+                },
+            )
+            Spacer(Modifier.height(Y.space.md))
+            PonteCard(
+                name = ponteName,
+                up = macUp,
+                onMirror = viewModel::mirror,
+                onControl = {
+                    viewModel.controlMac(context) { host ->
+                        val vnc = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("vnc://$host:5900"))
+                            .setPackage(VNC_PACKAGE)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        runCatching { context.startActivity(vnc) }.onFailure {
+                            Toast.makeText(context, "instale o bVNC pra ver a tela", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                },
+                onLock = viewModel::lockMac,
+                onSleep = viewModel::sleepMac,
+                onPlay = viewModel::playPause,
+                onVolume = viewModel::volume,
+                onSendClip = {
+                    val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    viewModel.sendClip(Ponte.shareableText(cm.primaryClip))
+                },
+                onForget = viewModel::forgetMac,
+            )
         }
     }
 }
@@ -114,6 +156,7 @@ private fun Header() {
 private fun Controls(
     shizuku: ShizukuState,
     wifiDebugOn: Boolean?,
+    adbPort: Int?,
     onShizukuTap: () -> Unit,
     onWifiToggle: () -> Unit,
 ) {
@@ -140,7 +183,7 @@ private fun Controls(
                 Text(
                     when {
                         !enabled -> "precisa do Shizuku"
-                        wifiDebugOn == true -> "ligado"
+                        wifiDebugOn == true -> adbPort?.let { "ligado · :$it" } ?: "ligado"
                         wifiDebugOn == false -> "desligado"
                         else -> "—"
                     },
@@ -182,62 +225,130 @@ private fun Toggle(on: Boolean, dim: Boolean) {
     }
 }
 
+/**
+ * The bridge to the Mac (橋): who it is paired with and whether it answers, over the remote
+ * buttons. Unpaired, it says how to pair instead — there is nothing to press until then.
+ */
 @Composable
-private fun SectionLabel(text: String) {
-    Text(
-        text = text.uppercase(),
-        style = Y.type.caption,
-        color = Y.inkFaint,
-        fontFamily = FontFamily.Monospace,
-        modifier = Modifier.padding(bottom = Y.space.xs),
-    )
+private fun PonteCard(
+    name: String?,
+    up: Boolean?,
+    onMirror: () -> Unit,
+    onControl: () -> Unit,
+    onLock: () -> Unit,
+    onSleep: () -> Unit,
+    onPlay: () -> Unit,
+    onVolume: (Int) -> Unit,
+    onSendClip: () -> Unit,
+    onForget: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(Y.radius.card))
+            .background(Y.paperTop.copy(alpha = 0.6f))
+            .border(1.dp, Y.inkFaint.copy(alpha = 0.4f), RoundedCornerShape(Y.radius.card))
+            .padding(Y.space.md),
+    ) {
+        var confirmForget by remember { mutableStateOf(false) }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier.rotate(-3f).size(30.dp)
+                    .border(1.5.dp, Y.sealIndigo, RoundedCornerShape(4.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("橋", style = Y.type.subtitle.copy(fontFamily = ProverbBrush), color = Y.sealIndigo)
+            }
+            Spacer(Modifier.width(Y.space.md))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    ("ponte" + (name?.let { " · $it" } ?: "")).uppercase(),
+                    style = Y.type.caption,
+                    color = Y.inkFaint,
+                    fontFamily = FontFamily.Monospace,
+                    maxLines = 1,
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (name != null) {
+                        val dot = when (up) { true -> Y.jade; false -> Y.seal; null -> Y.inkFaint }
+                        Box(Modifier.size(7.dp).clip(CircleShape).background(dot))
+                        Spacer(Modifier.width(6.dp))
+                    }
+                    Text(
+                        when {
+                            name == null -> "rode hashi parear no Mac e leia o QR"
+                            up == true -> "ao alcance"
+                            up == false -> "fora de alcance"
+                            else -> "procurando…"
+                        },
+                        style = Y.type.bodySm,
+                        color = Y.ink,
+                    )
+                }
+            }
+            if (name != null) {
+                Text(
+                    if (confirmForget) "esquecer?" else "×",
+                    style = Y.type.bodySm,
+                    color = if (confirmForget) Y.seal else Y.inkFaint,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .clickable { if (confirmForget) onForget() else confirmForget = true }
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                )
+            }
+        }
+        if (name != null) {
+            Spacer(Modifier.height(Y.space.md))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                BridgeButton("鏡", "espelhar", onMirror, Modifier.weight(1f))
+                BridgeButton("鎖", "bloquear", onLock, Modifier.weight(1f))
+                BridgeButton("眠", "suspender", onSleep, Modifier.weight(1f))
+                BridgeButton("写", "enviar clip", onSendClip, Modifier.weight(1f))
+            }
+            Spacer(Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                BridgeButton("操", "controlar", onControl, Modifier.weight(1f))
+                BridgeButton("⏯", "tocar", onPlay, Modifier.weight(1f))
+                BridgeButton("−", "volume", { onVolume(-10) }, Modifier.weight(1f))
+                BridgeButton("＋", "volume", { onVolume(10) }, Modifier.weight(1f))
+            }
+        }
+    }
 }
 
 @Composable
-private fun Feed(feed: List<RadarLine>, available: Boolean, modifier: Modifier = Modifier) {
-    if (!available) {
-        Box(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            Text("Shizuku fora — sem leitura de rede", style = Y.type.bodySm, color = Y.inkFaint)
-        }
-        return
+private fun BridgeButton(glyph: String, label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .border(1.dp, Y.inkFaint.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(glyph, style = Y.type.subtitle.copy(fontFamily = ProverbBrush), color = Y.sealIndigo)
+        Text(label, style = Y.type.caption, color = Y.inkDim, maxLines = 1)
     }
-    if (feed.isEmpty()) {
-        Box(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            Text("quieto — nenhuma conexão nova", style = Y.type.bodySm, color = Y.inkFaint)
+}
+
+/** bVNC (open source, from its author's GitHub releases) — the viewer for the Mac's screen. */
+private const val VNC_PACKAGE = "com.iiordanov.freebVNC"
+
+/** A bench tool: a seal glyph, its name and what it handles. */
+@Composable
+private fun ToolTile(glyph: String, label: String, sub: String, onClick: () -> Unit) {
+    ControlChip(modifier = Modifier.fillMaxWidth(), onClick = onClick) {
+        Box(
+            modifier = Modifier.rotate(-3f).size(30.dp).background(Y.seal, RoundedCornerShape(4.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(glyph, style = Y.type.subtitle.copy(fontFamily = ProverbBrush), color = Y.paperTop)
         }
-        return
-    }
-    LazyColumn(modifier = modifier, contentPadding = PaddingValues(bottom = Y.space.xl)) {
-        items(feed, key = { it.id }) { line ->
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = Y.space.sm),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    Modifier.size(5.dp).clip(CircleShape)
-                        .background(if (line.fresh) Y.seal else Y.inkFaint),
-                )
-                Spacer(Modifier.width(Y.space.sm))
-                Text(
-                    line.app,
-                    style = Y.type.bodySm,
-                    color = if (line.fresh) Y.seal else Y.ink,
-                    fontWeight = if (line.fresh) FontWeight.Bold else FontWeight.Normal,
-                    fontFamily = FontFamily.Monospace,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                Spacer(Modifier.width(Y.space.sm))
-                Text(
-                    line.owner ?: "${line.remote}:${line.port}",
-                    style = Y.type.caption,
-                    color = Y.inkDim,
-                    fontFamily = FontFamily.Monospace,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+        Spacer(Modifier.width(Y.space.md))
+        Column {
+            Text(label, style = Y.type.body, color = Y.inkStrong, fontWeight = FontWeight.Bold)
+            Text(sub, style = Y.type.caption, color = Y.inkDim)
         }
     }
 }

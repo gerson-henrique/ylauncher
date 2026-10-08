@@ -1,0 +1,101 @@
+<title>De-Para · Tinta</title>
+<style>
+  :root{
+    --paper:#efe8da;--panel:#f7f1e6;--ink:#241f18;--ink-soft:#5a5142;--faint:#8a7d6a;--line:#dcd0bb;
+    --seal:#b23b2e;--mustard:#a97c0a;--ok:#4f7a3f;--wait:#b07d12;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--mono:ui-monospace,"SF Mono",Menlo,monospace;--serif:"Songti SC",Georgia,serif;
+  }
+  :root:not([data-theme="light"]){@media(prefers-color-scheme:dark){
+    --paper:#15120e;--panel:#1e1913;--ink:#efe6d6;--ink-soft:#b6a993;--faint:#8a7d68;--line:#33291c;
+    --seal:#e0705f;--mustard:#e0b64b;--ok:#8fc07a;--wait:#e0b64b;}}
+  :root[data-theme="dark"]{--paper:#15120e;--panel:#1e1913;--ink:#efe6d6;--ink-soft:#b6a993;--faint:#8a7d68;--line:#33291c;--seal:#e0705f;--mustard:#e0b64b;--ok:#8fc07a;--wait:#e0b64b;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.55}
+  .wrap{max-width:860px;margin:0 auto;padding:48px 20px 90px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--seal);margin:0 0 10px}
+  h1{font-family:var(--serif);font-size:clamp(38px,7vw,58px);margin:0 0 10px;font-weight:600}
+  .lede{font-size:17px;color:var(--ink-soft);max-width:60ch;margin:0 0 8px}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin:18px 0 6px;font-size:13px;color:var(--ink-soft)}
+  .badge{font-family:var(--mono);font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap}
+  .b-ok{background:color-mix(in srgb,var(--ok) 20%,transparent);color:var(--ok)}
+  .b-mid{background:color-mix(in srgb,var(--wait) 22%,transparent);color:var(--wait)}
+  .b-no{background:color-mix(in srgb,var(--seal) 18%,transparent);color:var(--seal)}
+  h2{font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:var(--seal);margin:40px 0 4px;display:flex;align-items:center;gap:10px}
+  h2 .prog{margin-left:auto;font-size:11px;color:var(--faint);letter-spacing:0;text-transform:none}
+  table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px}
+  th{text-align:left;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);padding:6px 10px;border-bottom:1px solid var(--line)}
+  td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  td.comp{font-weight:600;width:34%}
+  td.des{color:var(--ink-soft);width:44%;font-size:13px}
+  td.st{width:22%;white-space:nowrap}
+  tr.done td.comp::before{content:"";}
+  .note{background:var(--panel);border-left:3px solid var(--mustard);border-radius:0 10px 10px 0;padding:14px 18px;margin-top:26px;font-size:14.5px;color:var(--ink-soft)}
+  .note b{color:var(--ink)}
+  .foot{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:var(--faint);font-size:12px;font-family:var(--mono)}
+</style>
+<div class="wrap">
+  <p class="eyebrow">ylauncher · tinta · implementação</p>
+  <h1>De-Para</h1>
+  <p class="lede">O que o desenho pede, o que já está no app, e o que falta — componente por componente.
+    Honesto: só a fileira de cima da Home está pronta. O resto é o mapa do trabalho.</p>
+  <div class="legend">
+    <span><span class="badge b-ok">FEITO</span> codado + no app</span>
+    <span><span class="badge b-mid">PARCIAL</span> existe, mas estilo antigo</span>
+    <span><span class="badge b-no">FALTA</span> nem começou</span>
+  </div>
+
+  <h2>Home <span class="prog">4 de 10</span></h2>
+  <table>
+    <tr><th>componente</th><th>desenho (tinta)</th><th>status</th></tr>
+    <tr><td class="comp">Papel de parede</td><td class="des">garça, janela opaca, o launcher desenha o próprio fundo</td><td class="st"><span class="badge b-ok">FEITO</span></td></tr>
+    <tr><td class="comp">Provérbio</td><td class="des">chinês vertical translúcido + tradução, autores em vermelho-selo</td><td class="st"><span class="badge b-ok">FEITO</span></td></tr>
+    <tr><td class="comp">Relógio</td><td class="des">selo 鶴 + hora fina em tinta + dia da semana</td><td class="st"><span class="badge b-ok">FEITO</span></td></tr>
+    <tr><td class="comp">Clima</td><td class="des">temperatura em tinta (aparece ao carregar)</td><td class="st"><span class="badge b-ok">FEITO</span></td></tr>
+    <tr><td class="comp">Apps abertos → poleiro</td><td class="des">ícones num galho de tinta; arrastar = voar</td><td class="st"><span class="badge b-no">FALTA</span></td></tr>
+    <tr><td class="comp">Notificação → selo</td><td class="des">selo vermelho com o número em algarismo chinês (八 二 一)</td><td class="st"><span class="badge b-no">FALTA</span></td></tr>
+    <tr><td class="comp">Dados do celular</td><td class="des">tira de papel quente: RAM · CPU · rede · temp, legível</td><td class="st"><span class="badge b-no">FALTA</span></td></tr>
+    <tr><td class="comp">Controles de baixo</td><td class="des">perso · app principal · todos os apps, em tinta</td><td class="st"><span class="badge b-no">FALTA</span></td></tr>
+    <tr><td class="comp">Dock (apps fixos)</td><td class="des">coluna à direita — rever no estilo tinta</td><td class="st"><span class="badge b-mid">PARCIAL</span></td></tr>
+    <tr><td class="comp">Fonte de pincel CJK</td><td class="des">Kai (楷) subset embutida; hoje é serif de sistema (fallback)</td><td class="st"><span class="badge b-no">FALTA</span></td></tr>
+  </table>
+
+  <h2>Cricket <span class="prog">0 de 1</span></h2>
+  <table>
+    <tr><th>componente</th><th>desenho (tinta)</th><th>status</th></tr>
+    <tr><td class="comp">Mural (sem chat)</td><td class="des">cartões que você toca (aprovar/frota/rodando/recado); teclado só ao tocar em "comando"; enviar em selo 送</td><td class="st"><span class="badge b-no">FALTA</span></td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--faint);margin:8px 0 0">Hoje ainda é o chat/console antigo. Depende também do server-side (a Cricket poder agir) — a sessão irmã.</p>
+
+  <h2>Sala de Máquinas <span class="prog">0 de 4</span></h2>
+  <table>
+    <tr><th>componente</th><th>desenho (tinta)</th><th>status</th></tr>
+    <tr><td class="comp">Controle do Shizuku</td><td class="des">status ● + abrir/permissão</td><td class="st"><span class="badge b-no">FALTA</span></td></tr>
+    <tr><td class="comp">Toggle Wi-Fi debug</td><td class="des">liga via Shizuku (mata a dor da reconexão)</td><td class="st"><span class="badge b-no">FALTA</span></td></tr>
+    <tr><td class="comp">Banda por app</td><td class="des">quem consome, em MB reais (NetworkStatsManager)</td><td class="st"><span class="badge b-no">FALTA</span></td></tr>
+    <tr><td class="comp">Feed de conexões</td><td class="des">com estado: ativa / conectando / ruim</td><td class="st"><span class="badge b-no">FALTA</span></td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--faint);margin:8px 0 0">Existe o Radar velho (conta conexões). Vira Sala de Máquinas do zero.</p>
+
+  <h2>Teclado <span class="prog">0 de 1</span></h2>
+  <table>
+    <tr><th>componente</th><th>desenho (tinta)</th><th>status</th></tr>
+    <tr><td class="comp">Teclado em tinta</td><td class="des">teclas de tinta, sugestões serif, enter em selo 送</td><td class="st"><span class="badge b-no">FALTA</span></td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--faint);margin:8px 0 0">É o fork do HeliBoard (repo separado, já clonado). Trabalho grande e à parte.</p>
+
+  <h2>Ligação <span class="prog">0 de 4</span></h2>
+  <table>
+    <tr><th>componente</th><th>desenho (tinta)</th><th>status</th></tr>
+    <tr><td class="comp">Discador</td><td class="des">número serif, teclas com letras, chamar em jade</td><td class="st"><span class="badge b-no">FALTA</span></td></tr>
+    <tr><td class="comp">Chamada recebida + consulta</td><td class="des">cartão: região (offline) + operadora + spam</td><td class="st"><span class="badge b-no">FALTA</span></td></tr>
+    <tr><td class="comp">Em chamada</td><td class="des">nome serif, controles em tinta, encerrar em selo</td><td class="st"><span class="badge b-no">FALTA</span></td></tr>
+    <tr><td class="comp">Ser app de telefone / caller-ID</td><td class="des">InCallService ou overlay — pra interceptar e consultar</td><td class="st"><span class="badge b-no">FALTA</span></td></tr>
+  </table>
+
+  <div class="note"><b>Resumo honesto:</b> de ~20 componentes, <b>4 prontos</b> (o topo da Home). O maior bloco
+    de valor rápido é <b>terminar a Home</b> (poleiro, selo-numeral, tira de dados, controles) — tudo
+    self-contained, sem depender de servidor. Sugiro fechar a Home 100%, depois Sala de Máquinas, depois
+    Cricket, e por fim Teclado/Ligação (os dois maiores). Me diz se concorda com essa ordem.</div>
+
+  <p class="foot">ylauncher · de-para tinta · atualizado conforme a implementação anda</p>
+</div>

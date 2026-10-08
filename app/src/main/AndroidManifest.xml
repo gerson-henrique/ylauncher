@@ -24,6 +24,15 @@
          Shizuku installed or running, the column still lists and switches, just cannot close. -->
     <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
 
+    <!-- QR reader in the Sala de Máquinas. Asked only when the reader is opened. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
+    <!-- Ponte 橋 to the Mac: let the Tinta keyboard (same signing key) hand us the copies it sees. -->
+    <permission
+        android:name="com.ykatchou.ylauncher.permission.PONTE"
+        android:protectionLevel="signature" />
+
     <application
         android:name=".YLauncherApp"
         android:allowBackup="true"
@@ -51,6 +60,54 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".ui.radar.QrScannerActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.YLauncher" />
+
+        <receiver
+            android:name=".data.ponte.PonteClipReceiver"
+            android:exported="true"
+            android:permission="com.ykatchou.ylauncher.permission.PONTE">
+            <intent-filter>
+                <action android:name="com.ykatchou.ylauncher.ponte.CLIP" />
+            </intent-filter>
+        </receiver>
+
+        <activity
+            android:name=".data.ponte.PonteShareActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <activity-alias
+            android:name=".MandarProMac"
+            android:exported="true"
+            android:label="Mandar pro Mac"
+            android:targetActivity=".data.ponte.PonteShareActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".AbrirNoMac"
+            android:exported="true"
+            android:label="Abrir no Mac"
+            android:targetActivity=".data.ponte.PonteShareActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity-alias>
 
         <service
             android:name=".service.NotificationService"

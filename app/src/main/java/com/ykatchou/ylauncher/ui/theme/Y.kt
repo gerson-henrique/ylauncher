@@ -54,6 +54,9 @@ object Y {
     val inkDim = Color(0xFF6A6151)
     val inkFaint = Color(0xFF9A8C74)
     val seal = Color(0xFFB23B2E)
+
+    /** Indigo (藍) seal ink — the second stamp, marking apps that live in the work profile. */
+    val sealIndigo = Color(0xFF2F4A7C)
     val jade = Color(0xFF5F8A4F)
     val paperTop = Color(0xFFF6F0E3)
     val paperBottom = Color(0xFFEBE2D0)

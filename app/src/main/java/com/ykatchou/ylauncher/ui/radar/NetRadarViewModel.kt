@@ -2,9 +2,13 @@ package com.ykatchou.ylauncher.ui.radar
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ykatchou.ylauncher.data.net.IpOwner
-import com.ykatchou.ylauncher.data.net.NetRadarSource
+import com.ykatchou.ylauncher.data.ponte.Ponte
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -16,46 +20,28 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
-/** One call that appeared on the radar. */
-data class RadarLine(
-    val id: Long,
-    val uid: Int,
-    val app: String,
-    val remote: String,
-    val port: Int,
-    val proto: String,
-    val owner: String?,   // Google / Meta / … when the IP is recognised, else null
-    val atMs: Long,
-    val fresh: Boolean,   // just appeared — gets the pulse
-)
-
-data class RadarSummary(val bytesPerSec: Long, val appsOnNet: Int, val topOrg: String)
-
 /** Shizuku's health, as the Sala de Máquinas needs to show and act on it. */
 enum class ShizukuState { UP, NEEDS_PERMISSION, DOWN }
 
 /**
- * Polls the socket tables while the page is on screen, and turns each *new* connection into a line
- * on the feed. Only samples when active — a network readout has no business waking the device from
- * a background loop. Connections that persist across polls are not re-emitted; only the moment one
- * opens shows up, which is what makes it read like a scanner.
+ * State behind the Sala de Máquinas: Shizuku's health and wireless debugging, polled only while the
+ * page is on screen — a readout has no business waking the device from a background loop.
  */
 @HiltViewModel
 class NetRadarViewModel @Inject constructor(
-    private val source: NetRadarSource,
+    private val ponte: Ponte,
 ) : ViewModel() {
 
-    private val _feed = MutableStateFlow<List<RadarLine>>(emptyList())
-    val feed: StateFlow<List<RadarLine>> = _feed.asStateFlow()
+    /** The paired Mac's name, or null when the bridge is not paired. */
+    val ponteName: StateFlow<String?> = ponte.pairedName.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
-    private val _summary = MutableStateFlow(RadarSummary(0, 0, "—"))
-    val summary: StateFlow<RadarSummary> = _summary.asStateFlow()
+    /** Whether the Mac answered the last ping; null before the first one. */
+    private val _macUp = MutableStateFlow<Boolean?>(null)
+    val macUp: StateFlow<Boolean?> = _macUp.asStateFlow()
 
-    private val _available = MutableStateFlow(true)
-    val available: StateFlow<Boolean> = _available.asStateFlow()
-
-    private val _paused = MutableStateFlow(false)
-    val paused: StateFlow<Boolean> = _paused.asStateFlow()
+    /** One-line results of the bridge buttons, shown as toasts. */
+    private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
+    val messages: SharedFlow<String> = _messages.asSharedFlow()
 
     // The machine-room controls: Shizuku health and whether wireless debugging is on. Both are
     // polled while the page is open; the wifi-debug read only works once Shizuku is up.
@@ -65,30 +51,23 @@ class NetRadarViewModel @Inject constructor(
     private val _wifiDebugOn = MutableStateFlow<Boolean?>(null)
     val wifiDebugOn: StateFlow<Boolean?> = _wifiDebugOn.asStateFlow()
 
+    /** The port wireless debugging listens on right now — it changes every time it is toggled. */
+    private val _adbPort = MutableStateFlow<Int?>(null)
+    val adbPort: StateFlow<Int?> = _adbPort.asStateFlow()
+
     private var job: Job? = null
-    private var seen = emptySet<String>()
-    private var firstDone = false
-    private var nextId = 0L
-    private val eventTimes = ArrayDeque<Long>()  // for calls/min
-    private val myUid = android.os.Process.myUid()
-    private var lastRx = 0L
-    private var lastTx = 0L
-    private var lastNetMs = 0L
 
     fun setActive(active: Boolean) {
         if (active) start() else stop()
     }
 
-    fun togglePause() {
-        _paused.value = !_paused.value
-    }
-
     private fun start() {
         if (job?.isActive == true) return
         job = viewModelScope.launch {
+            var tick = 0
             while (isActive) {
                 refreshShizuku()
-                if (!_paused.value) poll()
+                if (tick++ % MAC_PING_EVERY == 0 && ponteName.value != null) _macUp.value = ponte.reachable()
                 delay(POLL_MS)
             }
         }
@@ -117,6 +96,14 @@ class NetRadarViewModel @Inject constructor(
         } else {
             null
         }
+        _adbPort.value = if (_wifiDebugOn.value == true) {
+            withContext(Dispatchers.IO) {
+                com.ykatchou.ylauncher.data.running.ShizukuShell.run("getprop service.adb.tls.port")
+                    ?.trim()?.toIntOrNull()?.takeIf { it > 0 }
+            }
+        } else {
+            null
+        }
     }
 
     fun requestShizukuPermission() {
@@ -134,68 +121,65 @@ class NetRadarViewModel @Inject constructor(
         }
     }
 
-    private suspend fun poll() = runCatching { pollOnce() }
-        .onFailure { com.ykatchou.ylauncher.util.YLogger.e("NetRadar", "poll failed", it as? Exception ?: Exception(it)) }
-        .let { Unit }
-
-    private suspend fun pollOnce() {
-        val snap = withContext(Dispatchers.IO) { source.snapshot() }
-        if (snap == null) {
-            _available.value = false
-            return
+    /** Run a bridge action off the main thread and report it in one line. */
+    private fun bridge(ok: String, action: suspend () -> Boolean) {
+        viewModelScope.launch {
+            val done = action()
+            _macUp.value = done
+            _messages.emit(if (done) ok else "Mac fora de alcance")
         }
-        _available.value = true
-
-        val now = System.currentTimeMillis()
-        val keysNow = snap.mapTo(HashSet()) { it.key }
-        val fresh = snap.filter { it.key !in seen }
-        seen = keysNow
-
-        if (fresh.isNotEmpty()) {
-            val lines = fresh.map { c ->
-                RadarLine(
-                    id = nextId++,
-                    uid = c.uid,
-                    app = source.appLabel(c.uid),
-                    remote = c.remoteIp,
-                    port = c.remotePort,
-                    proto = c.proto,
-                    owner = IpOwner.ownerOf(c.remoteIp),
-                    atMs = now,
-                    fresh = firstDone,   // the opening burst is not a pulse; later arrivals are
-                )
-            }
-            _feed.value = (lines.reversed() + _feed.value).take(MAX_LINES)
-            if (firstDone) repeat(fresh.size) { eventTimes.addLast(now) }
-        }
-        firstDone = true
-
-        // Useful summary, not activity noise: how much data is moving, how many apps are on the
-        // network, and which owner it concentrates on. Bytes matter more than socket counts.
-        val bytesPerSec = throughput(now)
-        val appsOnNet = snap.filter { it.uid >= 10000 }.map { it.uid }.distinct().size
-        val topOrg = snap.mapNotNull { IpOwner.ownerOf(it.remoteIp) }
-            .filter { it != "rede local" }
-            .groupingBy { it }.eachCount().maxByOrNull { it.value }?.key ?: "—"
-        _summary.value = RadarSummary(bytesPerSec, appsOnNet, topOrg)
     }
 
-    /** Total device throughput since the last poll, in bytes/sec. Zero on the first sample. */
-    private fun throughput(now: Long): Long {
-        val rx = android.net.TrafficStats.getTotalRxBytes()
-        val tx = android.net.TrafficStats.getTotalTxBytes()
-        if (rx == android.net.TrafficStats.UNSUPPORTED.toLong()) return 0L
-        val rate = if (lastNetMs == 0L) 0L else {
-            val secs = ((now - lastNetMs) / 1000.0).coerceAtLeast(0.001)
-            (((rx - lastRx) + (tx - lastTx)) / secs).toLong().coerceAtLeast(0L)
+    fun mirror() {
+        if (_wifiDebugOn.value == false) {
+            _messages.tryEmit("liga o Wi‑Fi debug primeiro")
+            return
         }
-        lastRx = rx; lastTx = tx; lastNetMs = now
-        return rate
+        bridge("abrindo no Mac") { ponte.mirror() }
+    }
+
+    /** Fingerprint-gated: on success the viewer opens on the Mac's address. */
+    fun controlMac(context: android.content.Context, openViewer: (String) -> Unit) {
+        viewModelScope.launch {
+            when (val r = ponte.openScreen(context)) {
+                is Ponte.Screen.Open -> {
+                    _macUp.value = true
+                    openViewer(r.host)
+                }
+                is Ponte.Screen.Refused -> _messages.emit(r.why)
+            }
+        }
+    }
+
+    fun lockMac() = bridge("Mac bloqueado") { ponte.macAction("bloquear") }
+    fun sleepMac() = bridge("Mac dormindo") { ponte.macAction("suspender") }
+    fun playPause() = bridge("⏯") { ponte.macAction("tocar") }
+    fun sendClip(text: String?) {
+        if (text.isNullOrEmpty()) {
+            _messages.tryEmit("nada copiado")
+            return
+        }
+        bridge("copiado no Mac") { ponte.sendClip(text) }
+    }
+
+    fun volume(delta: Int) {
+        viewModelScope.launch {
+            val v = ponte.volume(delta)
+            _macUp.value = v != null
+            _messages.emit(v?.let { "volume $it" } ?: "Mac fora de alcance")
+        }
+    }
+
+    fun forgetMac() {
+        viewModelScope.launch {
+            ponte.forget()
+            _macUp.value = null
+        }
     }
 
     private companion object {
+        const val MAC_PING_EVERY = 5
         const val POLL_MS = 1200L
         const val SHIZUKU_REQ = 4610
-        const val MAX_LINES = 80
     }
 }

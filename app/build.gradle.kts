@@ -108,6 +108,12 @@ dependencies {
     implementation(libs.shizuku.api)
     implementation(libs.shizuku.provider)
 
+    // QR reader in the Sala de Máquinas: CameraX for frames, ZXing to decode — no Play services.
+    implementation(libs.camerax.camera2)
+    implementation(libs.camerax.lifecycle)
+    implementation(libs.camerax.view)
+    implementation(libs.zxing.core)
+
     // Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)

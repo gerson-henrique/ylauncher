@@ -12,6 +12,8 @@ datastore = "1.1.2"
 shizuku = "13.1.5"
 hilt = "2.53.1"
 hiltNavigationCompose = "1.2.0"
+camerax = "1.4.1"
+zxing = "3.5.3"
 junit = "4.13.2"
 mockk = "1.13.13"
 coroutinesTest = "1.9.0"
@@ -45,6 +47,11 @@ room-testing = { group = "androidx.room", name = "room-testing", version.ref = "
 
 shizuku-api = { group = "dev.rikka.shizuku", name = "api", version.ref = "shizuku" }
 shizuku-provider = { group = "dev.rikka.shizuku", name = "provider", version.ref = "shizuku" }
+
+camerax-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
+camerax-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
+camerax-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
+zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
 
 datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 
