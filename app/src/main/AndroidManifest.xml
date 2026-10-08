@@ -28,6 +28,8 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- Ponte: the fingerprint signs the challenge that opens Screen Sharing on the Mac. -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <!-- Grilo: the Smart Key opens a one-shot listener (pt-BR speech recognizer). -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <!-- Ponte 橋 to the Mac: let the Tinta keyboard (same signing key) hand us the copies it sees. -->
@@ -110,6 +112,41 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
         </activity-alias>
+
+        <!-- Grilo: invisible listener opened by the Smart Key; works over the lock screen. -->
+        <activity
+            android:name=".ui.grilo.GriloActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity="com.ykatchou.ylauncher.grilo"
+            android:launchMode="singleTask"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <!-- "Grilo" in the app list: what the Smart Key and the rear screen's player picker see.
+             APP_MUSIC + the MediaBrowserService below are what make it count as an audio app. -->
+        <activity-alias
+            android:name=".Grilo"
+            android:exported="true"
+            android:label="Grilo"
+            android:icon="@drawable/ic_grilo"
+            android:roundIcon="@drawable/ic_grilo"
+            android:targetActivity=".ui.grilo.GriloActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.APP_MUSIC" />
+            </intent-filter>
+        </activity-alias>
+
+        <service
+            android:name=".data.grilo.GriloMediaService"
+            android:exported="true"
+            android:label="Grilo">
+            <intent-filter>
+                <action android:name="android.media.browse.MediaBrowserService" />
+            </intent-filter>
+        </service>
 
         <service
             android:name=".service.NotificationService"

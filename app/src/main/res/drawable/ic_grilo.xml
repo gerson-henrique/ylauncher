@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Grilo: the Tinta bubble — warm paper, seal-red ring, a red seal dot. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#F6F0E3" android:strokeColor="#B23B2E" android:strokeWidth="5"
+        android:pathData="M54,14a40,40 0,1 1,0 80a40,40 0,1 1,0 -80z" />
+    <path android:fillColor="#B23B2E"
+        android:pathData="M42,40h24a4,4 0,0 1,4 4v20a4,4 0,0 1,-4 4h-24a4,4 0,0 1,-4 -4v-20a4,4 0,0 1,4 -4z" />
+    <path android:fillColor="#F6F0E3"
+        android:pathData="M50,47h8v14h-8z" />
+</vector>
