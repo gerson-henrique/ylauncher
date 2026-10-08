@@ -139,6 +139,23 @@
             </intent-filter>
         </activity-alias>
 
+        <!-- The rear screen's player picker (SystemUI miniscreen) lists apps that open audio
+             files — VIEW file:// and content:// with audio/* — plus a Blackview server whitelist.
+             Grilo answers that query; opened with an actual file, it just closes. -->
+        <activity-alias
+            android:name=".GriloAudio"
+            android:exported="true"
+            android:label="Grilo"
+            android:icon="@drawable/ic_grilo"
+            android:targetActivity=".ui.grilo.GriloActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="file" android:mimeType="audio/*" />
+                <data android:scheme="content" android:mimeType="audio/*" />
+            </intent-filter>
+        </activity-alias>
+
         <service
             android:name=".data.grilo.GriloMediaService"
             android:exported="true"

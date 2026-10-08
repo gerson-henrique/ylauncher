@@ -43,6 +43,8 @@ class GriloActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Opened as an "audio player" (the rear-screen picker loophole): nothing to play, leave.
+        if (intent?.action == Intent.ACTION_VIEW) { Grilo.sessao(this); finish(); return }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) setShowWhenLocked(true)
         tts = TextToSpeech(this) { st ->
             if (st == TextToSpeech.SUCCESS) { tts?.language = Locale("pt", "BR"); ttsPronto = true }
