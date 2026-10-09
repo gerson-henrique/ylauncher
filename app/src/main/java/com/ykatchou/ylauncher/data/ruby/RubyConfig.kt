@@ -48,8 +48,11 @@ class RubyConfig @Inject constructor(
      * already pointing at the Mac.
      */
     suspend fun migrarDoDell() {
-        if (dataStore.data.first()[BASE_URL]?.trimEnd('/') in LEGACY_BASE_URLS) {
-            dataStore.edit { it.remove(BASE_URL); it.remove(TOKEN_BLOB) }
+        val base = dataStore.data.first()[BASE_URL]?.trimEnd('/')
+        if (base in LEGACY_BASE_URLS) {
+            dataStore.edit { it.remove(BASE_URL); it.remove(TOKEN_BLOB) }   // host morto: re-parear
+        } else if (base in LAN_PARA_TAILNET) {
+            dataStore.edit { it[BASE_URL] = DEFAULT_BASE_URL }              // repontar, MANTENDO o token
         }
     }
 
@@ -120,8 +123,13 @@ class RubyConfig @Inject constructor(
 
     companion object {
         /** The Dell on the home WiFi, from the contract. Editable in settings; not compiled fixed. */
-        const val DEFAULT_BASE_URL = "http://192.168.0.9:8080"
+        // Tailscale: o Mac na tailnet. Funciona em qualquer rede (casa ou rua),
+        // sem IP de LAN que muda. O núcleo escuta em 0.0.0.0:8080.
+        const val DEFAULT_BASE_URL = "http://100.103.10.125:8080"
+        // Endereços antigos que o Dell usava: some com eles E com o token (host morto).
         private val LEGACY_BASE_URLS = setOf("http://192.168.0.30:8080", "http://192.168.68.106:8080", "http://ruby.local:8080")
+        // Endereços de LAN do Mac: repontar pra tailnet SEM perder o pareamento.
+        private val LAN_PARA_TAILNET = setOf("http://192.168.0.9:8080", "http://192.168.0.12:8080")
 
         private const val TAG = "RubyConfig"
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"
