@@ -57,6 +57,7 @@ object Grilo {
                 .build(),
         )
         val ativo = estado != Estado.QUIETO
+        BordaAura.atualizar(context, estado)
         s.setPlaybackState(
             PlaybackState.Builder()
                 .setActions(PlaybackState.ACTION_PLAY or PlaybackState.ACTION_PAUSE or PlaybackState.ACTION_PLAY_PAUSE or

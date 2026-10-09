@@ -30,6 +30,8 @@
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <!-- Grilo: the Smart Key opens a one-shot listener (pt-BR speech recognizer). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Grilo: a borda-aura em volta da tela (overlay sempre no topo). -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <!-- Ponte 橋 to the Mac: let the Tinta keyboard (same signing key) hand us the copies it sees. -->
@@ -155,6 +157,13 @@
                 <data android:scheme="content" android:mimeType="audio/*" />
             </intent-filter>
         </activity-alias>
+
+        <!-- POC: rear-screen Presentation test. Launchable so we can poke it by hand. -->
+        <activity
+            android:name=".ui.telateste.TelaTesteActivity"
+            android:exported="true"
+            android:label="Tela Teste"
+            android:excludeFromRecents="true" />
 
         <service
             android:name=".data.grilo.GriloMediaService"
